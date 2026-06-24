@@ -1,0 +1,1534 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#1a73e8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Relevamiento de Viviendas Sociales</title>
+<style>
+  /* ── Reset & base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --blue:       #1a73e8;
+    --blue-light: #e8f0fe;
+    --blue-dark:  #1557b0;
+    --green:      #1e8e3e;
+    --green-light:#e6f4ea;
+    --red:        #d93025;
+    --red-light:  #fce8e6;
+    --amber:      #b06000;
+    --amber-light:#fef7e0;
+    --gray-50:    #f8f9fa;
+    --gray-100:   #f1f3f4;
+    --gray-200:   #e8eaed;
+    --gray-400:   #9aa0a6;
+    --gray-600:   #5f6368;
+    --gray-800:   #3c4043;
+    --gray-900:   #202124;
+    --radius-sm:  6px;
+    --radius-md:  10px;
+    --radius-lg:  16px;
+    --shadow-sm:  0 1px 3px rgba(0,0,0,.12);
+    --shadow-md:  0 4px 12px rgba(0,0,0,.1);
+  }
+  html { font-size: 16px; }
+  body {
+    font-family: 'Google Sans', 'Segoe UI', Roboto, sans-serif;
+    background: var(--gray-100);
+    color: var(--gray-900);
+    min-height: 100vh;
+  }
+
+  /* ── Topbar ── */
+  .topbar {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--blue);
+    color: #fff;
+    display: flex; align-items: center; gap: 12px;
+    padding: 0 16px;
+    height: 56px;
+    box-shadow: var(--shadow-md);
+  }
+  .topbar svg { flex-shrink: 0; }
+  .topbar h1 { font-size: 17px; font-weight: 500; line-height: 1.25; }
+  .topbar p  { font-size: 12px; opacity: .8; }
+  .topbar .spacer { flex: 1; }
+
+  /* ── Indicador de conexión ── */
+  .net-pill {
+    font-size: 11px; font-weight: 600;
+    padding: 4px 10px; border-radius: 20px;
+    display: inline-flex; align-items: center; gap: 5px;
+    white-space: nowrap;
+  }
+  .net-pill::before { content:''; width:7px; height:7px; border-radius:50%; background:currentColor; }
+  .net-pill.on  { background: rgba(255,255,255,.18); color: #c6f0d2; }
+  .net-pill.off { background: rgba(0,0,0,.25);       color: #ffd2cd; }
+
+  /* ── Progress bar ── */
+  .progress-wrap { background: var(--gray-200); height: 3px; }
+  .progress-bar  { height: 3px; background: var(--blue); transition: width .3s; }
+
+  /* ── Tab nav ── */
+  .tab-nav {
+    display: flex; overflow-x: auto; scrollbar-width: none;
+    background: #fff;
+    border-bottom: 1px solid var(--gray-200);
+    position: sticky; top: 56px; z-index: 90;
+  }
+  .tab-nav::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    flex: 0 0 auto;
+    padding: 14px 18px 12px;
+    font-size: 13px; font-weight: 500;
+    color: var(--gray-600);
+    border: none; background: none; cursor: pointer;
+    border-bottom: 3px solid transparent;
+    display: flex; align-items: center; gap: 6px;
+    white-space: nowrap;
+    transition: color .15s, border-color .15s;
+  }
+  .tab-btn.active   { color: var(--blue); border-bottom-color: var(--blue); }
+  .tab-btn .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--gray-200); flex-shrink: 0;
+  }
+  .tab-btn.done .dot { background: var(--green); }
+
+  /* ── Content ── */
+  .content { padding: 16px; max-width: 680px; margin: 0 auto; }
+  .pane { display: none; }
+  .pane.active { display: block; }
+
+  /* ── Card ── */
+  .card {
+    background: #fff;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    padding: 20px;
+    margin-bottom: 14px;
+  }
+  .card-title {
+    font-size: 13px; font-weight: 600;
+    color: var(--gray-600);
+    text-transform: uppercase; letter-spacing: .05em;
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--gray-100);
+  }
+  .card-title svg { color: var(--blue); }
+
+  /* ── Form fields ── */
+  .field { margin-bottom: 14px; }
+  .field label {
+    display: block; font-size: 13px; font-weight: 500;
+    color: var(--gray-600); margin-bottom: 5px;
+  }
+  .field input,
+  .field select,
+  .field textarea {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 15px;
+    border: 1.5px solid var(--gray-200);
+    border-radius: var(--radius-sm);
+    background: #fff;
+    color: var(--gray-900);
+    transition: border-color .15s, box-shadow .15s;
+    font-family: inherit;
+  }
+  .field input:focus,
+  .field select:focus,
+  .field textarea:focus {
+    outline: none;
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(26,115,232,.15);
+  }
+  .field input.invalid { border-color: var(--red);   background: var(--red-light); }
+  .field input.valid   { border-color: var(--green); }
+  .field-msg { font-size: 12px; margin-top: 4px; min-height: 0; }
+  .field-msg.err { color: var(--red); }
+  .field-msg.ok  { color: var(--green); }
+  .field textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 380px) { .row2 { grid-template-columns: 1fr; } }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 10px 18px;
+    font-size: 14px; font-weight: 500;
+    border-radius: var(--radius-sm);
+    cursor: pointer; border: none;
+    transition: background .15s, transform .1s;
+    font-family: inherit;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn:disabled { opacity: .55; cursor: default; }
+  .btn-primary  { background: var(--blue);  color: #fff; }
+  .btn-primary:hover  { background: var(--blue-dark); }
+  .btn-success  { background: var(--green); color: #fff; }
+  .btn-success:hover  { background: #166c34; }
+  .btn-outline  {
+    background: #fff; color: var(--gray-800);
+    border: 1.5px solid var(--gray-200);
+  }
+  .btn-outline:hover { background: var(--gray-50); }
+  .btn-danger   { background: var(--red); color: #fff; }
+
+  /* ── Geo ── */
+  .geo-box {
+    background: var(--gray-50);
+    border: 1.5px solid var(--gray-200);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    font-size: 13px; color: var(--gray-600);
+    margin-top: 10px;
+    display: flex; align-items: flex-start; gap: 8px;
+    min-height: 42px;
+    word-break: break-all;
+  }
+  .geo-box a { color: var(--blue); text-decoration: none; }
+  .geo-box a:hover { text-decoration: underline; }
+
+  /* ── Photos ── */
+  .photo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .photo-thumb {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background: var(--gray-100);
+    border: 1.5px solid var(--gray-200);
+  }
+  .photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .photo-del {
+    position: absolute; top: 4px; right: 4px;
+    width: 22px; height: 22px;
+    background: rgba(0,0,0,.55); color: #fff;
+    border: none; border-radius: 50%;
+    font-size: 14px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1;
+  }
+  .photo-add {
+    aspect-ratio: 1;
+    border-radius: var(--radius-sm);
+    border: 2px dashed var(--gray-200);
+    background: var(--gray-50);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 5px; cursor: pointer;
+    font-size: 12px; color: var(--gray-400);
+    transition: border-color .15s, background .15s;
+    min-height: 90px;
+  }
+  .photo-add:hover { border-color: var(--blue); background: var(--blue-light); }
+  input[type=file] { display: none; }
+
+  /* ── Miembros ── */
+  .miembro {
+    background: var(--gray-50);
+    border: 1.5px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    margin-bottom: 10px;
+  }
+  .miembro-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 12px;
+    font-size: 14px; font-weight: 600; color: var(--blue);
+  }
+  .miembro-del {
+    background: none; border: 1.5px solid var(--gray-200);
+    border-radius: var(--radius-sm);
+    padding: 4px 10px; font-size: 12px; cursor: pointer;
+    color: var(--gray-600);
+  }
+  .miembro-del:hover { background: var(--red-light); color: var(--red); border-color: var(--red); }
+
+  /* ── Firma ── */
+  canvas#sig {
+    width: 100%; touch-action: none;
+    border-radius: var(--radius-sm);
+    border: 2px dashed var(--gray-200);
+    background: #fff;
+    cursor: crosshair;
+    display: block;
+  }
+  .sig-hint { font-size: 12px; color: var(--gray-400); margin-bottom: 8px; }
+
+  /* ── Bottom nav actions ── */
+  .nav-actions {
+    display: flex; justify-content: space-between;
+    align-items: center;
+    padding: 16px 0 8px;
+    gap: 10px;
+  }
+
+  /* ── Resumen ── */
+  .resumen-row {
+    display: flex; gap: 10px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--gray-100);
+    font-size: 14px;
+  }
+  .resumen-row:last-child { border-bottom: none; }
+  .resumen-label { color: var(--gray-600); min-width: 130px; flex-shrink: 0; }
+  .resumen-val   { color: var(--gray-900); font-weight: 500; word-break: break-word; }
+  .badge-ok  { background: var(--green-light); color: var(--green);  font-size:12px; padding:2px 8px; border-radius:20px; }
+  .badge-no  { background: var(--red-light);   color: var(--red);    font-size:12px; padding:2px 8px; border-radius:20px; }
+  .badge-pend{ background: var(--amber-light); color: var(--amber);  font-size:12px; padding:2px 8px; border-radius:20px; }
+
+  /* ── Cola de sincronización ── */
+  .cola-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--gray-100);
+    font-size: 14px;
+  }
+  .cola-item:last-child { border-bottom: none; }
+  .cola-info { flex: 1; min-width: 0; }
+  .cola-info b { display: block; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cola-info small { color: var(--gray-400); font-size: 12px; }
+  .cola-del {
+    background: none; border: none; cursor: pointer;
+    color: var(--gray-400); font-size: 17px; line-height: 1;
+    padding: 6px;
+  }
+  .cola-del:hover { color: var(--red); }
+  .cola-empty { font-size: 13px; color: var(--gray-400); padding: 8px 0; }
+
+  /* ── Aviso borrador ── */
+  .draft-bar {
+    background: var(--amber-light); border: 1.5px solid #f5d989;
+    border-radius: var(--radius-md);
+    padding: 10px 14px; margin-bottom: 14px;
+    font-size: 13px; color: var(--amber);
+    display: none;
+  }
+  .draft-bar.show { display: block; }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(100px);
+    background: var(--gray-900); color: #fff;
+    padding: 12px 20px; border-radius: 24px;
+    font-size: 14px; z-index: 999;
+    transition: transform .3s; white-space: nowrap;
+    max-width: 90vw; overflow: hidden; text-overflow: ellipsis;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.success { background: var(--green); }
+  .toast.error   { background: var(--red); }
+
+  /* ── Spinner overlay ── */
+  .overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(255,255,255,.85);
+    z-index: 998;
+    flex-direction: column; align-items: center; justify-content: center;
+    gap: 14px; font-size: 15px; color: var(--gray-800);
+  }
+  .overlay.show { display: flex; }
+  .spinner {
+    width: 40px; height: 40px;
+    border: 3px solid var(--gray-200);
+    border-top-color: var(--blue);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Config panel ── */
+  .config-bar {
+    background: var(--blue-light); border: 1.5px solid #c5d8fb;
+    border-radius: var(--radius-md);
+    padding: 12px 16px; margin-bottom: 14px;
+    font-size: 13px;
+  }
+  .config-bar b { color: var(--blue-dark); }
+  .config-bar input {
+    width: 100%; margin-top: 6px;
+    padding: 8px 10px; font-size: 13px;
+    border: 1.5px solid #c5d8fb;
+    border-radius: var(--radius-sm); background: #fff;
+    font-family: monospace;
+  }
+
+  /* ── Login ── */
+  .login-overlay {
+    display: none; position: fixed; inset: 0; z-index: 1000;
+    background: linear-gradient(160deg, var(--blue) 0%, var(--blue-dark) 100%);
+    align-items: center; justify-content: center; padding: 24px;
+  }
+  .login-overlay.show { display: flex; }
+  .login-box {
+    background: #fff; border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    padding: 32px 26px; width: 100%; max-width: 360px;
+    display: flex; flex-direction: column; gap: 12px; text-align: center;
+  }
+  .login-box h2 { font-size: 19px; color: var(--gray-900); }
+  .login-box > p { font-size: 14px; color: var(--gray-600); }
+  .login-box input {
+    padding: 12px 14px; font-size: 17px; text-align: center;
+    border: 1.5px solid var(--gray-200); border-radius: var(--radius-sm);
+    font-family: inherit;
+  }
+  .login-box input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(26,115,232,.15); }
+  .login-box .btn { justify-content: center; padding: 13px; }
+  .login-box small { font-size: 12px; color: var(--gray-400); }
+  .user-chip {
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    padding: 5px 12px; border-radius: 20px; border: none;
+    background: rgba(255,255,255,.18); color: #fff;
+    font-family: inherit; white-space: nowrap;
+  }
+  .user-chip:hover { background: rgba(255,255,255,.3); }
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div class="login-overlay" id="login-overlay">
+  <div class="login-box">
+    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#1a73e8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+    <h2>Viviendas Sociales</h2>
+    <p>Ingresá con tu cédula de identidad para comenzar a relevar</p>
+    <input type="text" id="login-ci" inputmode="numeric" placeholder="Ej: 1.234.567-8" autocomplete="off"
+           onkeydown="if(event.key==='Enter')hacerLogin()">
+    <div class="field-msg err" id="login-msg" style="min-height:16px"></div>
+    <button class="btn btn-primary" id="login-btn" onclick="hacerLogin()">Ingresar</button>
+    <small>El primer ingreso en cada dispositivo requiere conexión a internet. Si tu cédula no está habilitada, pedí el alta al administrador.</small>
+  </div>
+</div>
+
+<!-- Topbar -->
+<div class="topbar">
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+    <polyline points="9 22 9 12 15 12 15 22"/>
+  </svg>
+  <div>
+    <h1>Viviendas Sociales</h1>
+    <p>Formulario de relevamiento</p>
+  </div>
+  <span class="spacer"></span>
+  <button class="user-chip" id="user-chip" style="display:none" onclick="cerrarSesion()" title="Cerrar sesión"></button>
+  <span class="net-pill on" id="net">En línea</span>
+</div>
+<div class="progress-wrap"><div class="progress-bar" id="progress" style="width:20%"></div></div>
+
+<!-- Tab nav -->
+<div class="tab-nav" role="tablist">
+  <button class="tab-btn active" onclick="goTab(0)" id="tab0"><span class="dot"></span>Titular</button>
+  <button class="tab-btn"        onclick="goTab(1)" id="tab1"><span class="dot"></span>Hogar</button>
+  <button class="tab-btn"        onclick="goTab(2)" id="tab2"><span class="dot"></span>Fotos</button>
+  <button class="tab-btn"        onclick="goTab(3)" id="tab3"><span class="dot"></span>Firma</button>
+  <button class="tab-btn"        onclick="goTab(4)" id="tab4"><span class="dot"></span>Guardar</button>
+</div>
+
+<!-- Main content -->
+<div class="content">
+
+  <!-- ═══════════ PANE 0: TITULAR ═══════════ -->
+  <div class="pane active" id="pane0">
+
+    <!-- Aviso de borrador restaurado -->
+    <div class="draft-bar" id="draft-bar">
+      ✎ Se restauró un relevamiento sin terminar. Podés continuar donde quedaste o tocar
+      «Nuevo relevamiento» en la última pestaña para descartarlo.
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Datos del relevamiento
+      </div>
+      <div class="row2">
+        <div class="field"><label>Fecha</label><input type="date" id="fecha"></div>
+        <div class="field"><label>Encuestador/a</label><input type="text" id="encuestador" placeholder="Nombre"></div>
+      </div>
+      <div class="field"><label>Proyecto / Asentamiento</label>
+        <select id="proyecto" onchange="onProyectoChange()"></select>
+      </div>
+      <div class="field" id="padron-field" style="display:none">
+        <label>Padrón catastral <small style="color:var(--gray-400)">(seleccioná el que estás relevando)</small></label>
+        <select id="padron"></select>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        Titular de la vivienda
+      </div>
+      <div class="field"><label>Nombres y apellidos completos</label><input type="text" id="nombres" placeholder="Ej: Juan Carlos Rodríguez"></div>
+      <div class="row2">
+        <div class="field"><label>N° Cédula de identidad</label><input type="text" id="cedula" inputmode="numeric" placeholder="1.234.567-8"><div class="field-msg" id="msg-cedula"></div></div>
+        <div class="field"><label>Estado civil</label>
+          <select id="civil">
+            <option value="">Seleccionar...</option>
+            <option>Soltero/a</option><option>Casado/a</option><option>Unido/a</option>
+            <option>Concubino/a (legalizado)</option><option>Divorciado/a</option>
+            <option>Separado/a</option><option>Viudo/a</option>
+          </select>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Fecha de nacimiento</label><input type="date" id="fnac"></div>
+        <div class="field"><label>Edad <small style="color:var(--gray-400)">(se calcula sola)</small></label><input type="number" id="edad" min="0" max="120" placeholder="años"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Vínculo con el bien</label><input type="text" id="vinculo" placeholder="Ej: Titular, Heredero"></div>
+        <div class="field"><label>Capacidad</label><input type="text" id="capacidad"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        Dirección de la vivienda
+      </div>
+      <div class="field"><label>Departamento</label>
+        <select id="depto"></select>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Municipio</label><div id="slot-municipio"></div></div>
+        <div class="field"><label>Localidad <small style="color:var(--gray-400)">(escribí para buscar)</small></label><div id="slot-localidad"></div></div>
+      </div>
+      <datalist id="dl-localidades"></datalist>
+      <div class="row2">
+        <div class="field"><label>Dirección (calle)</label><input type="text" id="direccion"></div>
+        <div class="field"><label>Número</label><input type="text" id="numero"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Manzana</label><input type="text" id="manzana"></div>
+        <div class="field"><label>Solar</label><input type="text" id="solar"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Teléfono fijo</label><input type="tel" id="telefono"></div>
+        <div class="field"><label>Celular</label><input type="tel" id="celular"></div>
+      </div>
+      <div class="field"><label>Observaciones</label><textarea id="observaciones" placeholder="Anotaciones adicionales sobre el inmueble..."></textarea></div>
+
+      <button class="btn btn-outline" onclick="getGeo()" id="geo-btn" style="margin-top:4px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="10" stroke-dasharray="2 4"/></svg>
+        Capturar geolocalización
+      </button>
+      <div class="geo-box" id="geo-box">Sin coordenadas capturadas aún.</div>
+    </div>
+
+    <div class="nav-actions">
+      <span></span>
+      <button class="btn btn-primary" onclick="goTab(1)">
+        Siguiente: Hogar
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════ PANE 1: HOGAR ═══════════ -->
+  <div class="pane" id="pane1">
+    <div class="card">
+      <div class="card-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Composición del hogar
+      </div>
+      <p style="font-size:12px;color:var(--gray-400);margin-bottom:14px;line-height:1.5">
+        Orden de parentesco: 1-Responsable del hogar · 2-Esposo/a · 3-Hijos de mayor a menor · 4-Hijos casados · 5-Nietos · 6-Padres/Suegros · 7-Otro pariente · 8-No pariente
+      </p>
+      <div id="miembros-wrap"></div>
+      <button class="btn btn-outline" onclick="addMiembro()" style="width:100%;justify-content:center">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Agregar integrante
+      </button>
+    </div>
+    <div class="nav-actions">
+      <button class="btn btn-outline" onclick="goTab(0)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+        Anterior
+      </button>
+      <button class="btn btn-primary" onclick="goTab(2)">
+        Siguiente: Fotos
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════ PANE 2: FOTOS ═══════════ -->
+  <div class="pane" id="pane2">
+    <div class="card">
+      <div class="card-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        Fotos de la fachada
+      </div>
+      <p style="font-size:13px;color:var(--gray-600);margin-bottom:4px">Tomá fotos del frente de la vivienda. Se comprimen automáticamente.</p>
+      <div class="photo-grid" id="grid-fachada">
+        <div class="photo-add" onclick="triggerFile('fachada')">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          Agregar foto
+        </div>
+      </div>
+      <input type="file" id="file-fachada" accept="image/*" capture="environment" multiple onchange="handleFiles('fachada',this)">
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+        Fotos de cédulas de identidad
+      </div>
+      <p style="font-size:13px;color:var(--gray-600);margin-bottom:4px">Frente y dorso de cada cédula de los censados.</p>
+      <div class="photo-grid" id="grid-cedulas">
+        <div class="photo-add" onclick="triggerFile('cedulas')">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          Agregar foto
+        </div>
+      </div>
+      <input type="file" id="file-cedulas" accept="image/*" capture="environment" multiple onchange="handleFiles('cedulas',this)">
+    </div>
+
+    <div class="nav-actions">
+      <button class="btn btn-outline" onclick="goTab(1)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+        Anterior
+      </button>
+      <button class="btn btn-primary" onclick="goTab(3)">
+        Siguiente: Firma
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════ PANE 3: FIRMA ═══════════ -->
+  <div class="pane" id="pane3">
+    <div class="card">
+      <div class="card-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        Firma del jefe/a de hogar
+      </div>
+      <p class="sig-hint">Firmar con el dedo (celular) o con el mouse (computadora)</p>
+      <canvas id="sig" height="200"></canvas>
+      <div style="display:flex;gap:10px;margin-top:12px;align-items:center">
+        <button class="btn btn-outline" onclick="clearSig()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+          Borrar firma
+        </button>
+        <span id="sig-ok" style="font-size:13px;color:var(--green);display:none">✓ Firma registrada</span>
+      </div>
+    </div>
+    <div class="nav-actions">
+      <button class="btn btn-outline" onclick="goTab(2)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+        Anterior
+      </button>
+      <button class="btn btn-primary" onclick="goTab(4)">
+        Revisar y guardar
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════ PANE 4: GUARDAR Y SINCRONIZAR ═══════════ -->
+  <div class="pane" id="pane4">
+    <div class="card" id="resumen-card">
+      <div class="card-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        Resumen del relevamiento
+      </div>
+      <div id="resumen-body">— Completá los pasos anteriores —</div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px;padding-bottom:8px">
+      <button class="btn btn-success" onclick="guardarRelevamiento()" id="btn-guardar" style="width:100%;justify-content:center;padding:14px">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Guardar relevamiento
+      </button>
+      <p style="font-size:12px;color:var(--gray-400);text-align:center;margin-top:-4px">
+        Se guarda en el dispositivo aunque no haya señal y se envía al sincronizar.
+      </p>
+      <button class="btn btn-outline" onclick="exportarJSON()" style="width:100%;justify-content:center">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Descargar copia local (JSON)
+      </button>
+      <button class="btn btn-outline" onclick="nuevoRelevamiento()" style="width:100%;justify-content:center">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
+        Nuevo relevamiento
+      </button>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <div class="card-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        Guardados en este dispositivo
+      </div>
+      <div id="cola-list"><div class="cola-empty">Todavía no hay relevamientos guardados.</div></div>
+      <button class="btn btn-primary" onclick="sincronizar()" id="btn-sync" style="width:100%;justify-content:center;margin-top:12px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        Sincronizar pendientes
+      </button>
+    </div>
+  </div>
+
+</div><!-- /content -->
+
+<!-- Spinner overlay -->
+<div class="overlay" id="overlay">
+  <div class="spinner"></div>
+  <span id="overlay-msg">Enviando datos...</span>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//  ESTADO GLOBAL
+// ═══════════════════════════════════════════════════════════════════
+function nuevoUUID() {
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  // Fallback para navegadores viejos
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+const S = {
+  uuid: nuevoUUID(),
+  geo: null,
+  photos: { fachada: [], cedulas: [] },
+  miembros: [],
+  sigHasData: false,
+  midx: 0,
+  saved: false,       // true cuando el relevamiento actual ya se guardó en la cola
+  pendingSig: null    // firma de un borrador restaurado, pendiente de dibujar
+};
+
+const FIELD_IDS = ['fecha','encuestador','proyecto','padron','nombres','cedula',
+  'civil','fnac','edad','vinculo','capacidad','depto','municipio','localidad',
+  'direccion','numero','manzana','solar','telefono','celular','observaciones'];
+
+// ═══════════════════════════════════════════════════════════════════
+//  INDEXEDDB — persistencia local
+//  store 'borrador' : el relevamiento en curso (autoguardado)
+//  store 'cola'     : relevamientos terminados, pendientes o enviados
+// ═══════════════════════════════════════════════════════════════════
+let _db = null;
+function idb() {
+  return new Promise((res, rej) => {
+    if (_db) return res(_db);
+    const req = indexedDB.open('relevamientosDB', 1);
+    req.onupgradeneeded = () => {
+      const d = req.result;
+      if (!d.objectStoreNames.contains('borrador')) d.createObjectStore('borrador');
+      if (!d.objectStoreNames.contains('cola'))     d.createObjectStore('cola', { keyPath: 'uuid' });
+    };
+    req.onsuccess = () => { _db = req.result; res(_db); };
+    req.onerror   = () => rej(req.error);
+  });
+}
+function idbPut(store, val, key) {
+  return idb().then(d => new Promise((res, rej) => {
+    const tx = d.transaction(store, 'readwrite');
+    if (key !== undefined) tx.objectStore(store).put(val, key);
+    else tx.objectStore(store).put(val);
+    tx.oncomplete = () => res();
+    tx.onerror    = () => rej(tx.error);
+  }));
+}
+function idbGet(store, key) {
+  return idb().then(d => new Promise((res, rej) => {
+    const r = d.transaction(store).objectStore(store).get(key);
+    r.onsuccess = () => res(r.result || null);
+    r.onerror   = () => rej(r.error);
+  }));
+}
+function idbAll(store) {
+  return idb().then(d => new Promise((res, rej) => {
+    const r = d.transaction(store).objectStore(store).getAll();
+    r.onsuccess = () => res(r.result || []);
+    r.onerror   = () => rej(r.error);
+  }));
+}
+function idbDel(store, key) {
+  return idb().then(d => new Promise((res, rej) => {
+    const tx = d.transaction(store, 'readwrite');
+    tx.objectStore(store).delete(key);
+    tx.oncomplete = () => res();
+    tx.onerror    = () => rej(tx.error);
+  }));
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  AUTOGUARDADO DEL BORRADOR
+// ═══════════════════════════════════════════════════════════════════
+function debounce(fn, ms) {
+  let t = null;
+  return function () { clearTimeout(t); t = setTimeout(fn, ms); };
+}
+
+function snapshot() {
+  const campos = {};
+  FIELD_IDS.forEach(id => { const el = document.getElementById(id); campos[id] = el ? el.value : ''; });
+  return {
+    uuid: S.uuid,
+    campos,
+    geo: S.geo,
+    photos: S.photos,
+    miembros: collectMiembros(),
+    firma: S.sigHasData ? canvas.toDataURL('image/png') : '',
+    actualizadoEn: new Date().toISOString()
+  };
+}
+
+const scheduleSave = debounce(() => {
+  if (S.saved) return; // ya está en la cola, no hace falta el borrador
+  idbPut('borrador', snapshot(), 'actual').catch(err => console.warn('Autoguardado falló:', err));
+}, 900);
+
+// Cualquier cambio en un campo dispara el autoguardado
+document.addEventListener('input',  e => { if (e.target.matches('input,select,textarea')) scheduleSave(); });
+document.addEventListener('change', e => { if (e.target.matches('input,select,textarea')) scheduleSave(); });
+
+async function restoreDraft() {
+  let d = null;
+  try { d = await idbGet('borrador', 'actual'); } catch (e) { /* sin soporte IDB */ }
+  if (!d) return false;
+  S.uuid = d.uuid || S.uuid;
+  Object.entries(d.campos || {}).forEach(([id, v]) => {
+    const el = document.getElementById(id);
+    if (el && v) el.value = v;
+  });
+  renderDireccionControles();
+  if (d.campos && d.campos.proyecto) { onProyectoChange(); if (d.campos.padron) { const pe = document.getElementById('padron'); if (pe) pe.value = d.campos.padron; } }
+  if (d.campos && d.campos.municipio) { const el = document.getElementById('municipio'); if (el) el.value = d.campos.municipio; }
+  if (d.campos && d.campos.localidad) { const el = document.getElementById('localidad'); if (el) el.value = d.campos.localidad; }
+  S.geo = d.geo || null;
+  if (S.geo) renderGeo();
+  S.photos = d.photos || { fachada: [], cedulas: [] };
+  if (S.photos.fachada.length) renderPhotos('fachada');
+  if (S.photos.cedulas.length) renderPhotos('cedulas');
+  const miembros = d.miembros || [];
+  miembros.forEach(m => addMiembro(m));
+  if (d.firma) S.pendingSig = d.firma;
+  document.getElementById('draft-bar').classList.add('show');
+  return miembros.length > 0 || true;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  INICIALIZACIÓN
+// ═══════════════════════════════════════════════════════════════════
+// URL del backend (Google Apps Script desplegado como aplicación web)
+// ⬇⬇⬇ PEGÁ AQUÍ TU URL DEL APPS SCRIPT (la que termina en /exec) ⬇⬇⬇
+const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbw0ZBeHT6vwjhWO-86QDfBQMg4T5gAP7-v1J0cgKXI31aJUpS94eCsgxJUZoojSZLXm/exec';
+
+// ═══════════════════════════════════════════════════════════════════
+//  CATÁLOGOS (Departamentos UY, Municipios y Localidades de Canelones)
+// ═══════════════════════════════════════════════════════════════════
+const DEPARTAMENTOS = ["ARTIGAS", "CANELONES", "CERRO LARGO", "COLONIA", "DURAZNO", "FLORES", "FLORIDA", "LAVALLEJA", "MALDONADO", "MONTEVIDEO", "PAYSANDU", "RIO NEGRO", "RIVERA", "ROCHA", "SALTO", "SAN JOSE", "SORIANO", "TACUAREMBO", "TREINTA Y TRES"];
+const MUNICIPIOS_CANELONES = ["18 DE MAYO", "AGUAS CORRIENTES", "ATLANTIDA", "BARROS BLANCOS", "CANELONES", "CIUDAD DE LA COSTA", "COLONIA NICOLICH", "DEL ANDALUZ", "EMPALME OLMOS", "JUANICO", "LA FLORESTA", "LA PAZ", "LAS PIEDRAS", "LOS CERRILLOS", "MIGUES", "MONTES", "PANDO", "PARQUE DEL PLATA", "PASO CARRASCO", "PROGRESO", "SALINAS", "SAN ANTONIO", "SAN BAUTISTA", "SAN JACINTO", "SAN RAMON", "SANTA LUCIA", "SANTA ROSA", "SAUCE", "SOCA", "SUAREZ", "TALA", "TOLEDO"];
+const LOCALIDADES_CANELONES = ["AEROPUERTO INTERNACIONAL DE CARRASCO", "AGUAS CORRIENTES", "ALTOS DE LA TAHONA", "ARAMINDA", "ARENAL", "ARGENTINO", "ATLANTIDA", "ATLANTIDA-AGUARAYBA-", "B.H.U.", "BARRA DE CARRASCO", "BARRA DE LA PEDRERA", "BARRA DEL TALA", "BARRANCAS COLORADAS", "BARRIO ARTIGAS", "BARRIO BENZO", "BARRIO COPOLA", "BARRIO DEL LIBERTADOR", "BARRIO LA LUCHA", "BARRIO LOS PANORAMAS", "BARRIO MONTERREY", "BARRIO OBRERO", "BARRIO PRETTI", "BARRIO REMANSO", "BARRIO SAN CRISTOBAL", "BARRIO SANTA RITA", "BARRIO TRAVERSO", "BARRIO VILLA MURCIA", "BARROS BLANCOS", "BELLO HORIZONTE", "BIARRITZ", "BLANCO", "BOLIVAR", "BOSQUE DE SOLYMAR", "CAMINO AL PASO DEL ANDALUZ", "CAMINO DE LA CADENA", "CAMINO DODERA", "CAMINO LLOVERAS", "CAMPO MILITAR", "CANELON CHICO", "CANELON CHICO AL CENTRO", "CANELON CHICO DE PROGRESO", "CANELON GRANDE", "CANELON GRANDE DE PACHECO", "CANELON GRANDE NORTE", "CANELONES", "CAPILLA DE CELLA", "CAPITAN J A ARTIGAS", "CARMEL", "CARRASCO DEL SAUCE", "CARRASCODESAUCE", "CASARINO", "CAÑADA CARDOZO", "CAÑADA DE MONTAÑO", "CAÑADA GRANDE", "CAÑADA PRUDENCIO", "CERRILLOS AL OESTE", "CERRILLOS AL SUR", "CITY GOLF", "CITY PARK", "CIUDAD DE LA COSTA", "COCHENGO", "COLINAS DE CARRASCO", "COLINAS DE SOLYMAR", "COLONIA LAMAS", "COLONIA NICOLICH", "COLORADO CHICO", "COLORADO Y BRUJAS", "COSTA AZUL", "COSTA DE PANDO", "COSTA DE PANDO OLMOS", "COSTA DE PANDO SAN BAUTISTA", "COSTA DE PANDO SAN JACINTO", "COSTA DEL PANTANOSO", "COSTA DEL SAUCE", "COSTA DEL TALA ESTE", "COSTA DEL TALA NORTE", "COSTA Y GUILLAMON", "COSTAS DE PEDERNAL", "COSTAS DE SANTA LUCIA", "COSTAS DE SOLIS", "COSTAS DEL COLORADO", "COSTAS DEL COLORADO ESTE", "COSTAS DEL TALA", "CRUZ DE LOS CAMINOS", "CUCHILLA ALTA", "CUCHILLA ALTA Y EL GALEON", "CUCHILLA CABO DE HORNOS", "CUCHILLA DE MACHIN", "CUCHILLA DE ROCHA", "CUCHILLA DE SIERRA", "CUCHILLA DE ZEBALLOS", "CUCHILLA VERDE", "CUEVA DEL TIGRE", "CUMBRES DE CARRASCO", "DOCTOR FRANCISCO SOCA", "ECHEVARRIA", "EL BOSQUE", "EL BOSQUE DE CARRASCO", "EL BOSQUE DE LAGOMAR", "EL BOSQUE DE SOLYMAR", "EL COLORADO", "EL COLORADO DE MIGUES", "EL COLORADO SAN BAUTISTA", "EL CUADRO", "EL DORADO", "EL GALEON", "EL PINAR", "EMPALME DOGLIOTTI", "EMPALME NICOLICH", "EMPALME OLMOS", "EMPALME SAUCE", "ESQUINA GONZALEZ", "ESTACION ATLANTIDA", "ESTACION CASTELLANOS", "ESTACION LA FLORESTA", "ESTACION MIGUES", "ESTACION PEDRERA", "ESTACION PIEDRAS DE AFILAR", "ESTACION SOUDRIERS", "ESTACION TAPIA", "ESTANQUE DE PANDO", "FELICIANO", "FORTIN DE SANTA ROSA", "FRACC. CAMINO MALDONADO", "FRACC. CNO. ANDALUZ Y R.84", "FRACC. PROGRESO", "FRACC. SOBRE RUTA 74", "FRACCIONAMIENTO PROGRESO", "FRACCIONAMIENTO SOBRE RUTA 74", "FRANCISCO SOCA", "GUAZUVIRA", "GUAZUVIRA NUEVO", "HARAS DEL LAGO", "INSTITUTO ADVENTISTA", "JARDINES DE PANDO", "JAUREGUIBERRY", "JOAQUIN SUAREZ", "JUANICO", "LA ASUNCION", "LA CHINCHILLA", "LA FLORESTA", "LA MONTAÑESA", "LA PALMITA", "LA PALOMA", "LA PAZ", "LA TOTORA", "LA TUNA", "LAGO JARDIN DEL BOSQUE", "LAGOMAR", "LAS BRUJAS", "LAS HIGUERITAS", "LAS PIEDRAS", "LAS RANAS", "LAS TOSCAS", "LAS VEGAS", "LAS VIOLETAS", "LOMAS DE CARRASCO", "LOMAS DE SOLYMAR", "LOMAS DE TOLEDO", "LOS CEIBOS", "LOS CERRILLOS", "LOS HORNOS", "LOS TITANES", "MACANA", "MARGAT", "MARINDIA", "MATA SIETE", "MATAOJO", "MEDANOS DE SOLYMAR", "MELGAREJO", "MELILLA", "MIGUES", "MIRADOR DE LA TAHONA", "MONACO DE CARRASCO", "MONTES", "MONTES DE SOLYMAR", "MURIALDO", "NATALY", "NEPTUNIA", "NUTRIAS", "OLMOS", "PANDO", "PANTANOSO", "PANTANOSO DEL SAUCE", "PARADA CABRERA", "PARADOR TAJES", "PARQUE CARRASCO", "PARQUE DE SOLYMAR", "PARQUE DEL PLATA", "PARQUE MIRAMAR", "PASO ARBELO", "PASO CARRASCO", "PASO DE CUELLO", "PASO DE LA CADENA", "PASO DE LA PALOMA", "PASO DE LA SALAMANCA", "PASO DE LAS TOSCAS", "PASO DE LOS ALAMOS", "PASO DE LOS DIFUNTOS", "PASO DE LOS FRANCOS", "PASO DE PACHE", "PASO DEL BOTE", "PASO DEL COLORADO", "PASO DEL MEDIO", "PASO DEL SORDO", "PASO DEL TORO", "PASO ESPINOSA", "PASO PALOMEQUE", "PASO RIVERO DE VEJIGAS", "PEDERNAL", "PEDERNAL CHICO", "PEDERNAL GRANDE", "PIEDRA DEL TORO", "PIEDRA SOLA", "PIEDRAS DE AFILAR", "PIEDRITAS", "PIEDRITAS DE SUAREZ", "PINAMAR", "PINAMAR - PINEPARK", "PINARES DE SOLYMAR", "PINE PARK", "PINEPARK", "PONCE MATA SIETE", "POQUITOS", "PROGRESO", "PUEBLO CASTELLANOS", "PUENTE DE BRUJAS", "PUNTAS DE BRUJAS", "PUNTAS DE CANELON CHICO", "PUNTAS DE CAÑADA CARDOZO", "PUNTAS DE CAÑADA GRANDE", "PUNTAS DE COCHENGO", "PUNTAS DE LAS VIOLETAS", "PUNTAS DE MATA SIETE", "PUNTAS DE PANTANOSO", "PUNTAS DE PANTANOSO ESTE", "PUNTAS DE PEDRERA", "PUNTAS DE TOLEDO", "PUNTAS DE VEJIGAS", "PUNTAS DEL ARENAL", "QUINTA LOS HORNEROS", "QUINTAS DEL BOSQUE", "RANCHERIOS DE PONCE", "RINCON DE CARRASCO", "RINCON DE PANDO", "RINCON DE PORTEZUELO", "RINCON DE VELAZQUEZ", "RINCON DE VIDAL", "RINCON DEL COLORADO", "RINCON DEL CONDE", "RINCON DEL GIGANTE", "S BAUTISTA", "SALINAS", "SAN ANTONIO", "SAN BAUTISTA", "SAN JACINTO", "SAN JOSE DE CARRASCO", "SAN LUIS", "SAN PEDRO", "SAN RAMON", "SANTA ANA", "SANTA LUCIA", "SANTA LUCIA DEL ESTE", "SANTA ROSA", "SANTA TERESITA", "SANTOS LUGARES", "SARANDI DE MIGUES", "SAUCE", "SAUCE DE SOLIS", "SAUCE SOLO", "SAUCE SOLO DE MIGUES", "SAUCE SOLO DE MONTES", "SEIS HERMANOS", "SHANGRILA", "SOFIA SANTOS", "SOLIS CHICO", "SOLIS CHICO DE MIGUES", "SOLYMAR", "SOSA DIAZ", "SOUDRIERS", "SUAREZ", "TALA", "TALITA", "TOLEDO", "TOTORAL DEL SAUCE", "VEJIGAS", "VEJIGAS DE SAN RAMON", "VEJIGAS DE TALA", "VIADUCTO CANELONES", "VIEJO MOLINO SAN BERNARDO", "VIEJO MOLINO Y SAN BERNARDO", "VILLA AEROPARQUE", "VILLA AREJO", "VILLA ARGENTINA", "VILLA CRESPO Y SAN ANDRES", "VILLA EL TATO", "VILLA ENCANTADA", "VILLA FELICIDAD", "VILLA FORESTI", "VILLA FORTUNA", "VILLA GABI", "VILLA HADITA", "VILLA HUERTOS DE TOLEDO", "VILLA JUANA", "VILLA JUANITA", "VILLA LOS ALPES", "VILLA MARINA", "VILLA MOLFINO", "VILLA NUEVA", "VILLA PAZ S.A.", "VILLA PORVENIR", "VILLA PRADOS DE TOLEDO", "VILLA SAN CONO", "VILLA SAN FELIPE", "VILLA SAN JOSE", "VILLA VALVERDE", "VINA DEL MAR", "VISTA LINDA"];
+
+
+
+// ── Proyectos activos del Ministerio (con padrones catastrales) ──
+const PROYECTOS = [{"id": 1, "nombre": "Pando Norte Fase 3", "localidad": "Pando", "padrones": ["6781", "8831", "57147"]}, {"id": 2, "nombre": "Corfrisa - Talca", "localidad": "Canelones", "padrones": ["1512", "16494", "16235", "5815", "14197", "1515"]}, {"id": 3, "nombre": "Abrojal - Santa Lucía", "localidad": "Santa Lucía", "padrones": ["5152"]}, {"id": 4, "nombre": "San Felipe La Capilla - Toledo", "localidad": "Toledo", "padrones": ["3643", "684", "680", "681"]}, {"id": 5, "nombre": "Hnas de Calcuta", "localidad": "18 de Mayo", "padrones": []}, {"id": 6, "nombre": "Municipal I", "localidad": "Santa Lucía", "padrones": []}, {"id": 7, "nombre": "Caíman", "localidad": "Santa Lucía", "padrones": []}, {"id": 8, "nombre": "Barros Blancos", "localidad": "Barros Blancos", "padrones": []}, {"id": 9, "nombre": "Fabrica de Dulces", "localidad": "Las Piedras", "padrones": []}, {"id": 10, "nombre": "Proinco", "localidad": "Canelones", "padrones": []}, {"id": 11, "nombre": "Bigua", "localidad": "Salinas", "padrones": []}, {"id": 12, "nombre": "Paso Carrasco Sur", "localidad": "Paso Carrasco", "padrones": []}, {"id": 13, "nombre": "La Rosada – Villa San José", "localidad": "Toledo", "padrones": []}, {"id": 14, "nombre": "Cigliuti", "localidad": "Canelones", "padrones": []}, {"id": 15, "nombre": "Villa Montes", "localidad": "Canelones", "padrones": []}, {"id": 16, "nombre": "Nueva Esperanza", "localidad": "Solimar", "padrones": []}, {"id": 17, "nombre": "Monte de Salinas", "localidad": "Salinas", "padrones": []}, {"id": 18, "nombre": "San Luis", "localidad": "San Luis", "padrones": []}];
+
+function buildProyectos() {
+  const sel = document.getElementById('proyecto');
+  sel.innerHTML = '<option value="">Seleccionar proyecto...</option>' +
+    PROYECTOS.map(p => `<option value="${p.nombre}" data-id="${p.id}">${p.nombre}</option>`).join('');
+}
+
+// Al elegir proyecto: autocompletar localidad y ofrecer sus padrones
+function onProyectoChange() {
+  const sel = document.getElementById('proyecto');
+  const nombre = sel.value;
+  const proy = PROYECTOS.find(p => p.nombre === nombre);
+  const padField = document.getElementById('padron-field');
+  const padSel = document.getElementById('padron');
+  if (!proy) { padField.style.display = 'none'; padSel.innerHTML = ''; scheduleSave(); return; }
+  // Autocompletar localidad si el catálogo de Canelones la contiene
+  if (proy.localidad) {
+    const locUpper = proy.localidad.toUpperCase();
+    const match = LOCALIDADES_CANELONES.find(l => l.toUpperCase() === locUpper);
+    const locEl = document.getElementById('localidad');
+    if (locEl && match && !locEl.value) locEl.value = match;
+  }
+  // Padrones del proyecto
+  if (proy.padrones && proy.padrones.length) {
+    padField.style.display = 'block';
+    padSel.innerHTML = '<option value="">Seleccionar padrón...</option>' +
+      proy.padrones.map(p => `<option>${p}</option>`).join('') +
+      '<option value="__otro__">Otro / no listado</option>';
+  } else {
+    padField.style.display = 'none';
+    padSel.innerHTML = '';
+  }
+  scheduleSave();
+}
+
+function buildDireccion() {
+  const sel = document.getElementById('depto');
+  sel.innerHTML = '<option value="">Seleccionar...</option>' +
+    DEPARTAMENTOS.map(d => `<option${d === 'CANELONES' ? ' selected' : ''}>${d}</option>`).join('');
+  document.getElementById('dl-localidades').innerHTML =
+    LOCALIDADES_CANELONES.map(l => `<option value="${l}">`).join('');
+  renderDireccionControles();
+}
+
+// Canelones: municipio por lista y localidad con buscador.
+// Otros departamentos (sin catálogo cargado): texto libre.
+function renderDireccionControles() {
+  const esCanelones = document.getElementById('depto').value === 'CANELONES';
+  const mSlot = document.getElementById('slot-municipio');
+  const lSlot = document.getElementById('slot-localidad');
+  const mPrev = document.getElementById('municipio') ? document.getElementById('municipio').value : '';
+  const lPrev = document.getElementById('localidad') ? document.getElementById('localidad').value : '';
+  if (esCanelones) {
+    mSlot.innerHTML = '<select id="municipio"><option value="">Seleccionar...</option>' +
+      MUNICIPIOS_CANELONES.map(m => `<option>${m}</option>`).join('') + '</select>';
+    lSlot.innerHTML = '<input type="text" id="localidad" list="dl-localidades" placeholder="Buscar localidad..." autocomplete="off">';
+  } else {
+    mSlot.innerHTML = '<input type="text" id="municipio" placeholder="Municipio">';
+    lSlot.innerHTML = '<input type="text" id="localidad" placeholder="Localidad">';
+  }
+  if (mPrev && (!esCanelones || MUNICIPIOS_CANELONES.includes(mPrev))) document.getElementById('municipio').value = mPrev;
+  if (lPrev) document.getElementById('localidad').value = lPrev;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  SESIÓN POR CÉDULA (lista de usuarios en la hoja "Usuarios" de la BD)
+// ═══════════════════════════════════════════════════════════════════
+const SESSION_KEY = 'sesionUsuario';
+
+function checkSesion() {
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch (e) {}
+  if (s && s.nombre) { aplicarSesion(s); return true; }
+  document.getElementById('login-overlay').classList.add('show');
+  setTimeout(() => document.getElementById('login-ci').focus(), 200);
+  return false;
+}
+
+function aplicarSesion(s) {
+  document.getElementById('login-overlay').classList.remove('show');
+  const enc = document.getElementById('encuestador');
+  if (!enc.value) enc.value = s.nombre;
+  enc.readOnly = true;
+  const chip = document.getElementById('user-chip');
+  chip.textContent = '👤 ' + s.nombre.split(' ')[0];
+  chip.style.display = 'inline-flex';
+}
+
+async function hacerLogin() {
+  const input = document.getElementById('login-ci');
+  const msg = document.getElementById('login-msg');
+  const btn = document.getElementById('login-btn');
+  const ced = input.value.trim();
+  msg.textContent = '';
+  if (BACKEND_URL.indexOf('PEGAR_AQUI') !== -1) {
+    msg.textContent = '⚠ Falta configurar la URL del backend en App.html (línea ~835)';
+    return;
+  }
+  if (!validarCedulaUY(ced)) { msg.textContent = 'La cédula no es válida. Revisá el número.'; return; }
+  if (!navigator.onLine) { msg.textContent = 'El primer ingreso requiere conexión a internet.'; return; }
+  btn.disabled = true; btn.textContent = 'Verificando…';
+  try {
+    const r = await fetch(BACKEND_URL + '?accion=login&cedula=' + ced.replace(/\D/g, ''));
+    const j = await r.json();
+    if (j.ok && j.nombre) {
+      const s = { cedula: ced.replace(/\D/g, ''), nombre: String(j.nombre) };
+      localStorage.setItem(SESSION_KEY, JSON.stringify(s));
+      aplicarSesion(s);
+      showToast('Bienvenido/a, ' + s.nombre, 'success');
+    } else {
+      msg.textContent = 'Esa cédula no está habilitada. Pedí el alta al administrador.';
+    }
+  } catch (err) {
+    msg.textContent = 'No se pudo verificar. Revisá la conexión e intentá de nuevo.';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Ingresar';
+  }
+}
+
+function cerrarSesion() {
+  if (!confirm('¿Cerrar sesión en este dispositivo?')) return;
+  localStorage.removeItem(SESSION_KEY);
+  location.reload();
+}
+
+
+(async function init() {
+  buildDireccion();
+  buildProyectos();
+  checkSesion();
+  const restored = await restoreDraft();
+  if (!restored) {
+    document.getElementById('fecha').value = new Date().toISOString().slice(0, 10);
+    addMiembro();
+  } else if (!document.getElementById('fecha').value) {
+    document.getElementById('fecha').value = new Date().toISOString().slice(0, 10);
+  }
+  renderCola();
+  updateNet();
+  // Si hay conexión y backend configurado, intenta sincronizar pendientes al abrir
+  if (navigator.onLine) {
+    const pend = (await idbAll('cola').catch(() => [])).filter(i => i.estado === 'pendiente');
+    if (pend.length) sincronizar(true);
+  }
+})();
+
+// ═══════════════════════════════════════════════════════════════════
+//  INDICADOR DE CONEXIÓN
+// ═══════════════════════════════════════════════════════════════════
+function updateNet() {
+  const pill = document.getElementById('net');
+  if (navigator.onLine) { pill.className = 'net-pill on';  pill.textContent = 'En línea'; }
+  else                  { pill.className = 'net-pill off'; pill.textContent = 'Sin conexión'; }
+}
+window.addEventListener('online',  () => { updateNet(); showToast('Conexión recuperada', 'success'); sincronizar(true); });
+window.addEventListener('offline', () => { updateNet(); showToast('Sin conexión: los datos se guardan en el dispositivo', '', 4000); });
+
+// ═══════════════════════════════════════════════════════════════════
+//  NAVEGACIÓN DE PESTAÑAS
+// ═══════════════════════════════════════════════════════════════════
+let currentTab = 0;
+const TABS = ['pane0','pane1','pane2','pane3','pane4'];
+const PROG = [20, 40, 60, 80, 100];
+
+function goTab(n) {
+  if (n === 4) { buildResumen(); renderCola(); }
+  document.getElementById(TABS[currentTab]).classList.remove('active');
+  document.getElementById('tab' + currentTab).classList.remove('active');
+  document.getElementById('tab' + currentTab).classList.add('done');
+  currentTab = n;
+  document.getElementById(TABS[n]).classList.add('active');
+  document.getElementById('tab' + n).classList.add('active');
+  document.getElementById('tab' + n).classList.remove('done');
+  document.getElementById('progress').style.width = PROG[n] + '%';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  GEOLOCALIZACIÓN
+// ═══════════════════════════════════════════════════════════════════
+function renderGeo() {
+  const box = document.getElementById('geo-box');
+  if (!S.geo) { box.textContent = 'Sin coordenadas capturadas aún.'; return; }
+  const { lat, lon, acc } = S.geo;
+  const mapsUrl = 'https://maps.google.com/?q=' + lat + ',' + lon;
+  box.innerHTML = `
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="green" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+    <span><b>${lat.toFixed(6)}, ${lon.toFixed(6)}</b><br>
+    Precisión ±${Math.round(acc)} m —
+    <a href="${mapsUrl}" target="_blank" rel="noopener">Ver en mapa</a></span>`;
+}
+
+function getGeo() {
+  const box = document.getElementById('geo-box');
+  const btn = document.getElementById('geo-btn');
+  box.textContent = 'Obteniendo ubicación…';
+  btn.disabled = true;
+  if (!navigator.geolocation) {
+    box.innerHTML = '⚠ Geolocalización no disponible en este navegador.';
+    btn.disabled = false;
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const { latitude: lat, longitude: lon, accuracy: acc } = pos.coords;
+      S.geo = { lat, lon, acc };
+      renderGeo();
+      btn.disabled = false;
+      scheduleSave();
+    },
+    err => {
+      box.innerHTML = '⚠ ' + (err.code === 1 ? 'Permiso denegado. Habilitá la ubicación en tu dispositivo.' : 'No se pudo obtener la ubicación.');
+      btn.disabled = false;
+    },
+    { enableHighAccuracy: true, timeout: 12000 }
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  FOTOS (con compresión automática)
+// ═══════════════════════════════════════════════════════════════════
+function triggerFile(type) { document.getElementById('file-' + type).click(); }
+
+// Reduce a máx. 1600px de lado mayor y JPEG 82% — clave para que el
+// guardado local, la sincronización y Google Drive no exploten de peso.
+function compressImage(file) {
+  return new Promise(res => {
+    const r = new FileReader();
+    r.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 1600;
+        let w = img.width, h = img.height;
+        if (Math.max(w, h) > MAX) {
+          const k = MAX / Math.max(w, h);
+          w = Math.round(w * k); h = Math.round(h * k);
+        }
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        res(c.toDataURL('image/jpeg', 0.82));
+      };
+      img.onerror = () => res(e.target.result); // si no se puede, queda original
+      img.src = e.target.result;
+    };
+    r.readAsDataURL(file);
+  });
+}
+
+async function handleFiles(type, input) {
+  const files = Array.from(input.files);
+  if (!files.length) return;
+  showOverlay('Procesando foto(s)…');
+  for (const f of files) {
+    const dataUrl = await compressImage(f);
+    S.photos[type].push(dataUrl);
+  }
+  hideOverlay();
+  renderPhotos(type);
+  input.value = '';
+  scheduleSave();
+}
+
+function renderPhotos(type) {
+  const grid = document.getElementById('grid-' + type);
+  grid.innerHTML = '';
+  S.photos[type].forEach((src, i) => {
+    const d = document.createElement('div');
+    d.className = 'photo-thumb';
+    d.innerHTML = `<img src="${src}" alt="foto ${i+1}">
+      <button class="photo-del" onclick="removePhoto('${type}',${i})" aria-label="Eliminar">×</button>`;
+    grid.appendChild(d);
+  });
+  const add = document.createElement('div');
+  add.className = 'photo-add';
+  add.onclick = () => triggerFile(type);
+  add.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>Agregar`;
+  grid.appendChild(add);
+}
+
+function removePhoto(type, i) { S.photos[type].splice(i, 1); renderPhotos(type); scheduleSave(); }
+
+// ═══════════════════════════════════════════════════════════════════
+//  MIEMBROS DEL HOGAR
+// ═══════════════════════════════════════════════════════════════════
+const PARENTESCO = ['','1 – Responsable del hogar','2 – Esposo/a o Compañero/a','3 – Hijo/a / Hijastro/a','4 – Hijo/a casado/a','5 – Nieto/a','6 – Padre / Suegro/a','7 – Otro pariente','8 – Otra persona no pariente'];
+const CIVIL_OPTS = ['','Soltero/a','Casado/a','Unido/a','Concubino/a (legalizado)','Divorciado/a','Separado/a','Viudo/a'];
+const SEXO_OPTS  = ['','Masculino','Femenino','Otro'];
+
+function optionsHTML(arr, selected) {
+  return arr.map(o => `<option${o === (selected || '') && o !== '' ? ' selected' : ''}>${o}</option>`).join('');
+}
+
+// addMiembro() acepta opcionalmente datos para restaurar un borrador
+function addMiembro(data) {
+  data = data || {};
+  S.midx++;
+  const idx = S.midx;
+  S.miembros.push(idx);
+  const wrap = document.getElementById('miembros-wrap');
+  const div = document.createElement('div');
+  div.className = 'miembro'; div.id = 'mb-' + idx;
+  div.innerHTML = `
+    <div class="miembro-header">
+      <span>Integrante ${idx}</span>
+      <button class="miembro-del" onclick="removeMiembro(${idx})">Quitar</button>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Parentesco</label>
+        <select id="m${idx}p">${optionsHTML(PARENTESCO, data.parentesco)}</select></div>
+      <div class="field"><label>Sexo</label>
+        <select id="m${idx}s">${optionsHTML(SEXO_OPTS, data.sexo)}</select></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Nombres</label><input type="text" id="m${idx}n" placeholder="Nombres" value="${(data.nombres||'').replace(/"/g,'&quot;')}"></div>
+      <div class="field"><label>Apellidos</label><input type="text" id="m${idx}a" placeholder="Apellidos" value="${(data.apellidos||'').replace(/"/g,'&quot;')}"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Cédula</label><input type="text" id="m${idx}c" inputmode="numeric" placeholder="X.XXX.XXX-X" value="${(data.cedula||'').replace(/"/g,'&quot;')}"><div class="field-msg" id="msg-m${idx}c"></div></div>
+      <div class="field"><label>Estado civil</label>
+        <select id="m${idx}e">${optionsHTML(CIVIL_OPTS, data.estadoCivil)}</select></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Fecha de nacimiento</label><input type="date" id="m${idx}f" value="${data.fechaNac||''}"></div>
+      <div class="field"><label>Edad</label><input type="number" id="m${idx}d" min="0" max="120" placeholder="años" value="${data.edad||''}"></div>
+    </div>`;
+  wrap.appendChild(div);
+  scheduleSave();
+}
+
+function removeMiembro(idx) {
+  document.getElementById('mb-' + idx)?.remove();
+  S.miembros = S.miembros.filter(i => i !== idx);
+  scheduleSave();
+}
+
+function collectMiembros() {
+  return S.miembros.map(idx => ({
+    parentesco:   (document.getElementById('m'+idx+'p')?.value || ''),
+    sexo:         (document.getElementById('m'+idx+'s')?.value || ''),
+    nombres:      (document.getElementById('m'+idx+'n')?.value || ''),
+    apellidos:    (document.getElementById('m'+idx+'a')?.value || ''),
+    cedula:       (document.getElementById('m'+idx+'c')?.value || ''),
+    estadoCivil:  (document.getElementById('m'+idx+'e')?.value || ''),
+    fechaNac:     (document.getElementById('m'+idx+'f')?.value || ''),
+    edad:         (document.getElementById('m'+idx+'d')?.value || '')
+  }));
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  VALIDACIONES: cédula uruguaya + edad automática
+// ═══════════════════════════════════════════════════════════════════
+// Dígito verificador de la cédula uruguaya (pesos 2-9-8-7-6-3-4)
+function validarCedulaUY(ci) {
+  const dig = (ci || '').replace(/\D/g, '');
+  if (dig.length < 7 || dig.length > 8) return false;
+  const num = dig.padStart(8, '0');
+  const pesos = [2, 9, 8, 7, 6, 3, 4];
+  let suma = 0;
+  for (let i = 0; i < 7; i++) suma += parseInt(num[i], 10) * pesos[i];
+  const dv = (10 - (suma % 10)) % 10;
+  return dv === parseInt(num[7], 10);
+}
+
+function validateCedulaField(el) {
+  const msgId = el.id === 'cedula' ? 'msg-cedula' : 'msg-' + el.id;
+  const msg = document.getElementById(msgId);
+  const val = el.value.trim();
+  el.classList.remove('valid', 'invalid');
+  if (msg) { msg.textContent = ''; msg.className = 'field-msg'; }
+  if (!val) return;
+  if (validarCedulaUY(val)) {
+    el.classList.add('valid');
+    if (msg) { msg.textContent = '✓ Cédula válida'; msg.className = 'field-msg ok'; }
+  } else {
+    el.classList.add('invalid');
+    if (msg) { msg.textContent = '⚠ El dígito verificador no coincide. Revisá el número.'; msg.className = 'field-msg err'; }
+  }
+}
+
+function calcEdad(iso) {
+  if (!iso) return '';
+  const b = new Date(iso + 'T00:00:00');
+  if (isNaN(b.getTime())) return '';
+  const t = new Date();
+  let a = t.getFullYear() - b.getFullYear();
+  const m = t.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && t.getDate() < b.getDate())) a--;
+  return (a >= 0 && a <= 120) ? String(a) : '';
+}
+
+function setEdadFrom(srcId, dstId) {
+  const src = document.getElementById(srcId);
+  const dst = document.getElementById(dstId);
+  if (!src || !dst || !src.value) return;
+  const edad = calcEdad(src.value);
+  if (edad !== '') { dst.value = edad; scheduleSave(); }
+}
+
+// Delegación: funciona también para los integrantes agregados dinámicamente
+document.addEventListener('focusout', e => {
+  const el = e.target;
+  if (!el || !el.id) return;
+  if (el.id === 'cedula' || /^m\d+c$/.test(el.id)) validateCedulaField(el);
+});
+document.addEventListener('change', e => {
+  const el = e.target;
+  if (!el || !el.id) return;
+  if (el.id === 'depto') renderDireccionControles();
+  if (el.id === 'fnac') setEdadFrom('fnac', 'edad');
+  const m = el.id.match(/^m(\d+)f$/);
+  if (m) setEdadFrom(el.id, 'm' + m[1] + 'd');
+});
+
+// ═══════════════════════════════════════════════════════════════════
+//  FIRMA
+// ═══════════════════════════════════════════════════════════════════
+const canvas = document.getElementById('sig');
+const ctx = canvas.getContext('2d');
+let drawing = false, lx = 0, ly = 0;
+
+function resizeCanvas() {
+  const w = canvas.offsetWidth;
+  const prevData = canvas.toDataURL();
+  canvas.width = w;
+  canvas.height = 200;
+  if (S.sigHasData) {
+    const img = new Image();
+    img.onload = () => ctx.drawImage(img, 0, 0);
+    img.src = prevData;
+  } else if (S.pendingSig) {
+    const img = new Image();
+    img.onload = () => {
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      S.sigHasData = true;
+      document.getElementById('sig-ok').style.display = 'inline';
+    };
+    img.src = S.pendingSig;
+    S.pendingSig = null;
+  }
+}
+window.addEventListener('resize', resizeCanvas);
+setTimeout(resizeCanvas, 150);
+
+function pos(e, c) {
+  const r = c.getBoundingClientRect();
+  const sx = c.width / r.width, sy = c.height / r.height;
+  if (e.touches) return { x:(e.touches[0].clientX-r.left)*sx, y:(e.touches[0].clientY-r.top)*sy };
+  return { x:(e.clientX-r.left)*sx, y:(e.clientY-r.top)*sy };
+}
+canvas.addEventListener('mousedown',  e => { drawing=true; const p=pos(e,canvas); lx=p.x; ly=p.y; });
+canvas.addEventListener('mousemove',  e => { if(!drawing)return; const p=pos(e,canvas); draw(lx,ly,p.x,p.y); lx=p.x; ly=p.y; });
+canvas.addEventListener('mouseup',    () => { drawing=false; scheduleSave(); });
+canvas.addEventListener('mouseleave', () => { if(drawing){drawing=false; scheduleSave();} });
+canvas.addEventListener('touchstart', e => { e.preventDefault(); drawing=true; const p=pos(e,canvas); lx=p.x; ly=p.y; }, {passive:false});
+canvas.addEventListener('touchmove',  e => { if(!drawing)return; e.preventDefault(); const p=pos(e,canvas); draw(lx,ly,p.x,p.y); lx=p.x; ly=p.y; }, {passive:false});
+canvas.addEventListener('touchend',   () => { drawing=false; scheduleSave(); });
+
+function draw(x1,y1,x2,y2) {
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+  ctx.strokeStyle='#202124'; ctx.lineWidth=2.5; ctx.lineCap='round'; ctx.stroke();
+  S.sigHasData = true;
+  document.getElementById('sig-ok').style.display = 'inline';
+}
+function clearSig() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  S.sigHasData = false;
+  document.getElementById('sig-ok').style.display = 'none';
+  scheduleSave();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  RESUMEN
+// ═══════════════════════════════════════════════════════════════════
+function g(id) { return document.getElementById(id)?.value || '—'; }
+
+function buildResumen() {
+  const geo = S.geo ? `${S.geo.lat.toFixed(5)}, ${S.geo.lon.toFixed(5)} (±${Math.round(S.geo.acc)}m)` : 'No capturada';
+  const rows = [
+    ['ID relevamiento', '<code style="font-size:12px">' + S.uuid.slice(0,8) + '…</code>'],
+    ['Encuestador/a', g('encuestador')],
+    ['Fecha',         g('fecha')],
+    ['Proyecto',      g('proyecto')],
+    ['Padrón',        g('padron')],
+    ['Titular',       g('nombres')],
+    ['Cédula',        g('cedula')],
+    ['Estado civil',  g('civil')],
+    ['Dirección',     [g('direccion'),g('numero')].filter(v=>v!=='—').join(' ') || '—'],
+    ['Localidad',     g('localidad')],
+    ['Departamento',  g('depto')],
+    ['Geolocalización', geo],
+    ['Miembros del hogar', S.miembros.length + ' integrante(s)'],
+    ['Fotos fachada',  S.photos.fachada.length + ' foto(s)'],
+    ['Fotos cédulas',  S.photos.cedulas.length + ' foto(s)'],
+    ['Firma', S.sigHasData ? '<span class="badge-ok">Registrada ✓</span>' : '<span class="badge-no">No registrada</span>']
+  ];
+  document.getElementById('resumen-body').innerHTML = rows.map(([l,v]) =>
+    `<div class="resumen-row"><span class="resumen-label">${l}</span><span class="resumen-val">${v}</span></div>`
+  ).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  RECOPILAR TODO
+// ═══════════════════════════════════════════════════════════════════
+function collectAll() {
+  return {
+    uuid: S.uuid,
+    titular: {
+      fecha:       g('fecha'),
+      encuestador: g('encuestador'),
+      proyecto:    g('proyecto'),
+      padron:      g('padron'),
+      nombres:     g('nombres'),
+      cedula:      g('cedula'),
+      fechaNac:    g('fnac'),
+      edad:        g('edad'),
+      estadoCivil: g('civil'),
+      vinculo:     g('vinculo'),
+      capacidad:   g('capacidad')
+    },
+    direccion: {
+      departamento: g('depto'),
+      municipio:    g('municipio'),
+      localidad:    g('localidad'),
+      direccion:    g('direccion'),
+      numero:       g('numero'),
+      manzana:      g('manzana'),
+      solar:        g('solar'),
+      telefono:     g('telefono'),
+      celular:      g('celular'),
+      observaciones:g('observaciones')
+    },
+    geolocalizacion: S.geo,
+    hogar: collectMiembros(),
+    fotosData: { fachada: S.photos.fachada, cedulas: S.photos.cedulas },
+    firmaBase64: S.sigHasData ? canvas.toDataURL('image/png') : ''
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  COLA: GUARDAR Y SINCRONIZAR
+// ═══════════════════════════════════════════════════════════════════
+async function guardarRelevamiento() {
+  if (S.saved) { showToast('Este relevamiento ya está guardado', '', 2500); return; }
+  const data = collectAll();
+  if (!data.titular.nombres || data.titular.nombres === '—') {
+    showToast('⚠ Completá al menos el nombre del titular', 'error');
+    goTab(0);
+    return;
+  }
+  data.estado = 'pendiente';
+  data.guardadoEn = new Date().toISOString();
+  try {
+    await idbPut('cola', data);
+    await idbDel('borrador', 'actual');
+  } catch (err) {
+    showToast('Error al guardar en el dispositivo: ' + err, 'error', 5000);
+    return;
+  }
+  S.saved = true;
+  const btn = document.getElementById('btn-guardar');
+  btn.textContent = '✓ Guardado en el dispositivo';
+  btn.disabled = true;
+  document.getElementById('draft-bar').classList.remove('show');
+  showToast('✓ Relevamiento guardado', 'success');
+  renderCola();
+  if (navigator.onLine) sincronizar(true);
+}
+
+async function renderCola() {
+  let items = [];
+  try { items = await idbAll('cola'); } catch (e) { return; }
+  items.sort((a, b) => (b.guardadoEn || '').localeCompare(a.guardadoEn || ''));
+  const list = document.getElementById('cola-list');
+  if (!items.length) {
+    list.innerHTML = '<div class="cola-empty">Todavía no hay relevamientos guardados.</div>';
+    document.getElementById('btn-sync').textContent = 'Sincronizar pendientes';
+    return;
+  }
+  list.innerHTML = items.map(it => {
+    const t = it.titular || {};
+    const badge = it.estado === 'enviado'
+      ? '<span class="badge-ok">Enviado ✓</span>'
+      : '<span class="badge-pend">Pendiente</span>';
+    const fecha = (it.guardadoEn || '').slice(0, 16).replace('T', ' ');
+    return `<div class="cola-item">
+      <div class="cola-info">
+        <b>${(t.nombres && t.nombres !== '—') ? t.nombres : '(sin nombre)'}</b>
+        <small>${t.cedula && t.cedula !== '—' ? 'CI ' + t.cedula + ' · ' : ''}${fecha} · ${it.uuid.slice(0,8)}</small>
+      </div>
+      ${badge}
+      <button class="cola-del" onclick="eliminarDeCola('${it.uuid}')" aria-label="Eliminar" title="Eliminar">×</button>
+    </div>`;
+  }).join('');
+  const pend = items.filter(i => i.estado === 'pendiente').length;
+  document.getElementById('btn-sync').textContent =
+    pend ? `Sincronizar pendientes (${pend})` : 'Sincronizar pendientes';
+}
+
+async function eliminarDeCola(uuid) {
+  if (!confirm('¿Eliminar este relevamiento del dispositivo? Esta acción no se puede deshacer.')) return;
+  await idbDel('cola', uuid);
+  renderCola();
+  showToast('Relevamiento eliminado', '', 2500);
+}
+
+let syncing = false;
+async function sincronizar(silencioso) {
+  if (syncing) return;
+  const url = BACKEND_URL;
+  if (!navigator.onLine) {
+    if (!silencioso) showToast('Sin conexión. Se sincronizará cuando vuelva la señal.', '', 4000);
+    return;
+  }
+  let items = [];
+  try { items = (await idbAll('cola')).filter(i => i.estado === 'pendiente'); } catch (e) { return; }
+  if (!items.length) {
+    if (!silencioso) showToast('No hay relevamientos pendientes', '', 2500);
+    return;
+  }
+  syncing = true;
+  showOverlay(`Sincronizando ${items.length} relevamiento(s)…`);
+  let ok = 0, fail = 0;
+  for (const it of items) {
+    try {
+      const resp = await fetch(url, {
+        method: 'POST',
+        body: JSON.stringify(it),
+        headers: { 'Content-Type': 'text/plain' } // Apps Script: text/plain evita preflight CORS
+      });
+      const result = await resp.json();
+      if (result.ok) {
+        it.estado = 'enviado';
+        it.enviadoEn = new Date().toISOString();
+        // Liberamos espacio local: fotos y firma ya viven en Drive
+        delete it.fotosData;
+        it.firmaBase64 = '';
+        await idbPut('cola', it);
+        ok++;
+      } else { fail++; }
+    } catch (err) { fail++; }
+  }
+  syncing = false;
+  hideOverlay();
+  renderCola();
+  if (ok && !fail) showToast(`✓ ${ok} relevamiento(s) sincronizado(s)`, 'success', 4000);
+  else if (ok || fail) showToast(`${ok} enviado(s), ${fail} con error. Reintentá más tarde.`, fail ? 'error' : 'success', 5000);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  EXPORTAR / NUEVO
+// ═══════════════════════════════════════════════════════════════════
+function exportarJSON() {
+  const data = collectAll();
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'relevamiento_' + (data.titular.cedula !== '—' ? data.titular.cedula : 'sin_cedula') + '_' + Date.now() + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function nuevoRelevamiento() {
+  if (!S.saved && !confirm('¿Iniciás un nuevo relevamiento? Se descartará el borrador actual.')) return;
+  await idbDel('borrador', 'actual').catch(() => {});
+  location.reload();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  UI HELPERS
+// ═══════════════════════════════════════════════════════════════════
+function showOverlay(msg) {
+  document.getElementById('overlay-msg').textContent = msg;
+  document.getElementById('overlay').classList.add('show');
+}
+function hideOverlay() { document.getElementById('overlay').classList.remove('show'); }
+
+function showToast(msg, type='', duration=3000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  setTimeout(() => { t.className = 'toast'; }, duration);
+}
+</script>
+</body>
+</html>
