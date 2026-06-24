@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel de consulta — Padrón Escrituras</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --blue:#1a73e8; --blue-dark:#1557b0; --blue-light:#e8f0fe;
+    --green:#1e8e3e; --green-light:#e6f4ea;
+    --red:#d93025; --red-light:#fce8e6;
+    --amber:#b06000; --amber-light:#fef7e0;
+    --gray-50:#f8f9fa; --gray-100:#f1f3f4; --gray-200:#e8eaed;
+    --gray-400:#9aa0a6; --gray-600:#5f6368; --gray-800:#3c4043; --gray-900:#202124;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,.12);
+    --shadow-md: 0 4px 12px rgba(0,0,0,.1);
+  }
+  html, body { height:100%; font-family:'Google Sans','Segoe UI',Roboto,sans-serif;
+               background:var(--gray-100); color:var(--gray-900); }
+
+  /* ── Topbar ── */
+  .topbar { background:var(--blue); color:#fff; height:56px; display:flex; align-items:center;
+            padding:0 16px; gap:14px; box-shadow:var(--shadow-md); z-index:1000; position:relative; }
+  .topbar h1 { font-size:17px; font-weight:500; }
+  .topbar p  { font-size:12px; opacity:.85; }
+  .topbar .spacer { flex:1; }
+  .user-chip { font-size:12px; font-weight:600; padding:5px 12px; border-radius:20px;
+               background:rgba(255,255,255,.18); color:#fff; cursor:pointer; border:none;
+               font-family:inherit; display:inline-flex; align-items:center; gap:6px; }
+  .user-chip:hover { background:rgba(255,255,255,.3); }
+  .badge-rol { background:rgba(255,255,255,.25); padding:2px 8px; border-radius:10px;
+               font-size:10px; text-transform:uppercase; letter-spacing:.05em; }
+
+  /* ── Layout ── */
+  .app { display:grid; grid-template-columns:300px 1fr 380px; height:calc(100vh - 56px); }
+  @media (max-width:1100px) { .app { grid-template-columns:260px 1fr; }
+                               .panel-detalle { display:none; } }
+  @media (max-width:700px)  { .app { grid-template-columns:1fr; }
+                               .sidebar { display:none; } }
+
+  /* ── Sidebar (filtros) ── */
+  .sidebar { background:#fff; border-right:1px solid var(--gray-200); overflow-y:auto;
+             padding:16px; }
+  .sb-title { font-size:11px; font-weight:600; color:var(--gray-600);
+              text-transform:uppercase; letter-spacing:.06em; margin:14px 0 8px; }
+  .sb-title:first-child { margin-top:0; }
+  .filter-input, .filter-select {
+    width:100%; padding:8px 10px; font-size:13px; font-family:inherit;
+    border:1.5px solid var(--gray-200); border-radius:6px; background:#fff;
+    color:var(--gray-900);
+  }
+  .filter-input:focus, .filter-select:focus {
+    outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(26,115,232,.15);
+  }
+  .stats-box { background:var(--gray-50); border-radius:8px; padding:12px; margin-top:8px;
+               font-size:12px; line-height:1.6; }
+  .stats-box b { color:var(--gray-900); }
+  .stats-row { display:flex; justify-content:space-between; padding:3px 0; gap:8px; }
+  .stats-row span:last-child { font-weight:600; }
+  .stats-tabs { display:flex; gap:4px; margin:8px 0 4px; }
+  .stats-tab { flex:1; padding:5px 8px; font-size:11px; border:1.5px solid var(--gray-200);
+               background:#fff; border-radius:6px; cursor:pointer; color:var(--gray-600);
+               font-family:inherit; }
+  .stats-tab.active { background:var(--blue); color:#fff; border-color:var(--blue); }
+
+  /* ── Mapa ── */
+  .map-wrap { position:relative; }
+  #map { width:100%; height:100%; background:var(--gray-100); }
+  .map-counter { position:absolute; top:12px; left:50%; transform:translateX(-50%);
+                 background:#fff; padding:6px 14px; border-radius:20px; font-size:13px;
+                 box-shadow:var(--shadow-sm); z-index:500; font-weight:500; }
+  .map-counter b { color:var(--blue); }
+  .map-list-toggle {
+    position:absolute; bottom:16px; right:16px; z-index:500;
+    background:#fff; padding:10px 16px; border-radius:24px; box-shadow:var(--shadow-md);
+    border:none; cursor:pointer; font-family:inherit; font-size:13px; font-weight:500;
+    display:none; align-items:center; gap:8px;
+  }
+  @media (max-width:1100px) { .map-list-toggle { display:inline-flex; } }
+
+  /* ── Panel detalle (derecho) ── */
+  .panel-detalle { background:#fff; border-left:1px solid var(--gray-200);
+                    overflow-y:auto; display:flex; flex-direction:column; }
+  .pd-header { padding:14px 16px; border-bottom:1px solid var(--gray-200);
+                display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .pd-tabs { display:flex; border-bottom:1px solid var(--gray-200); }
+  .pd-tab { flex:1; padding:10px; font-size:12px; font-weight:500; color:var(--gray-600);
+            background:none; border:none; cursor:pointer; border-bottom:2.5px solid transparent;
+            font-family:inherit; }
+  .pd-tab.active { color:var(--blue); border-bottom-color:var(--blue); }
+  .pd-body { flex:1; overflow-y:auto; }
+
+  .lista-item { padding:11px 14px; border-bottom:1px solid var(--gray-100); cursor:pointer;
+                font-size:13px; transition:background .15s; }
+  .lista-item:hover { background:var(--gray-50); }
+  .lista-item.sel { background:var(--blue-light); border-left:3px solid var(--blue); padding-left:11px; }
+  .lista-item b { display:block; font-weight:500; color:var(--gray-900); margin-bottom:2px;
+                  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .lista-item small { color:var(--gray-600); font-size:11.5px; line-height:1.4; }
+  .lista-meta { display:flex; gap:6px; margin-top:4px; flex-wrap:wrap; }
+  .tag { font-size:10px; padding:2px 7px; border-radius:10px; background:var(--gray-100);
+         color:var(--gray-600); }
+  .tag.proy { background:var(--blue-light); color:var(--blue-dark); }
+  .lista-empty { padding:40px 20px; text-align:center; color:var(--gray-400);
+                  font-size:13px; line-height:1.6; }
+
+  .ficha { padding:16px; }
+  .ficha-titulo { font-size:16px; font-weight:600; margin-bottom:2px; }
+  .ficha-subt { font-size:13px; color:var(--gray-600); margin-bottom:14px; }
+  .ficha-section { margin-bottom:18px; }
+  .ficha-section h4 { font-size:11px; font-weight:600; color:var(--gray-600);
+                       text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px;
+                       padding-bottom:6px; border-bottom:1px solid var(--gray-100); }
+  .ficha-row { display:flex; gap:10px; font-size:13px; padding:4px 0; }
+  .ficha-row span:first-child { color:var(--gray-600); min-width:110px; flex-shrink:0; }
+  .ficha-row span:last-child  { color:var(--gray-900); word-break:break-word; }
+  .ficha-fotos { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+  .ficha-fotos a { aspect-ratio:1; background:var(--gray-100); border-radius:6px;
+                    overflow:hidden; display:block; border:1.5px solid var(--gray-200); }
+  .ficha-fotos img { width:100%; height:100%; object-fit:cover; }
+  .ficha-firma { background:var(--gray-50); border-radius:6px; padding:10px; text-align:center; }
+  .ficha-firma img { max-width:100%; max-height:120px; }
+
+  .miembro-row { background:var(--gray-50); border-radius:6px; padding:9px 12px;
+                  margin-bottom:6px; font-size:13px; }
+  .miembro-row b { display:block; font-weight:500; }
+  .miembro-row small { color:var(--gray-600); font-size:11.5px; }
+
+  /* ── Login overlay ── */
+  .login-overlay { display:none; position:fixed; inset:0; z-index:2000;
+                    background:linear-gradient(160deg,var(--blue) 0%,var(--blue-dark) 100%);
+                    align-items:center; justify-content:center; padding:20px; }
+  .login-overlay.show { display:flex; }
+  .login-box { background:#fff; border-radius:14px; box-shadow:var(--shadow-md);
+                padding:32px 26px; width:100%; max-width:380px;
+                display:flex; flex-direction:column; gap:12px; text-align:center; }
+  .login-box h2 { font-size:19px; color:var(--gray-900); }
+  .login-box > p { font-size:14px; color:var(--gray-600); }
+  .login-box input { padding:12px; font-size:17px; text-align:center;
+                      border:1.5px solid var(--gray-200); border-radius:6px;
+                      font-family:inherit; }
+  .login-box input:focus { outline:none; border-color:var(--blue);
+                            box-shadow:0 0 0 3px rgba(26,115,232,.15); }
+  .login-msg { font-size:12px; min-height:16px; color:var(--red); }
+
+  /* ── Botones ── */
+  .btn { display:inline-flex; align-items:center; gap:6px; padding:9px 14px;
+         font-size:13px; font-weight:500; border-radius:6px; cursor:pointer;
+         border:none; font-family:inherit; transition:background .15s; }
+  .btn:active { transform:scale(.97); }
+  .btn-primary { background:var(--blue); color:#fff; }
+  .btn-primary:hover { background:var(--blue-dark); }
+  .btn-outline { background:#fff; color:var(--gray-800); border:1.5px solid var(--gray-200); }
+  .btn-outline:hover { background:var(--gray-50); }
+  .btn-sm { font-size:11px; padding:5px 10px; }
+  .btn-close { background:none; border:none; cursor:pointer; color:var(--gray-400);
+                font-size:18px; padding:4px 8px; }
+  .btn-close:hover { color:var(--gray-800); }
+
+  /* ── Overlay carga ── */
+  .loading { position:fixed; inset:0; background:rgba(255,255,255,.7); z-index:1500;
+              display:none; align-items:center; justify-content:center;
+              flex-direction:column; gap:12px; font-size:14px; color:var(--gray-800); }
+  .loading.show { display:flex; }
+  .spinner { width:36px; height:36px; border:3px solid var(--gray-200);
+              border-top-color:var(--blue); border-radius:50%;
+              animation:spin .8s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%) translateY(80px);
+            background:var(--gray-900); color:#fff; padding:11px 18px; border-radius:22px;
+            font-size:13px; z-index:1900; transition:transform .3s; max-width:90vw; }
+  .toast.show { transform:translateX(-50%) translateY(0); }
+  .toast.error { background:var(--red); }
+
+  /* ── Popup del marcador ── */
+  .leaflet-popup-content { margin:10px 14px; font-size:13px; }
+  .leaflet-popup-content b { display:block; margin-bottom:3px; }
+  .popup-link { color:var(--blue); cursor:pointer; font-size:12px; text-decoration:underline; }
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div class="login-overlay show" id="login-overlay">
+  <div class="login-box">
+    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#1a73e8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+    <h2>Panel de consulta</h2>
+    <p>Ingresá con tu cédula. Solo accesible para coordinadores y técnicos.</p>
+    <input type="text" id="login-ci" inputmode="numeric" placeholder="Ej: 1.234.567-8"
+           autocomplete="off" onkeydown="if(event.key==='Enter')hacerLogin()">
+    <div class="login-msg" id="login-msg"></div>
+    <button class="btn btn-primary" id="login-btn" onclick="hacerLogin()" style="justify-content:center;padding:12px">Ingresar</button>
+  </div>
+</div>
+
+<!-- Topbar -->
+<div class="topbar">
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+    <polyline points="9 22 9 12 15 12 15 22"/>
+  </svg>
+  <div>
+    <h1>Padrón Escrituras</h1>
+    <p>Panel de consulta de relevamientos</p>
+  </div>
+  <span class="spacer"></span>
+  <button class="btn btn-outline btn-sm" onclick="descargarLocal()" id="btn-descargar" style="display:none">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    Descargar panel para uso local
+  </button>
+  <button class="user-chip" id="user-chip" style="display:none" onclick="cerrarSesion()" title="Cerrar sesión">
+    <span id="user-nombre"></span>
+    <span class="badge-rol" id="user-rol"></span>
+  </button>
+</div>
+
+<!-- App -->
+<div class="app">
+  <!-- Sidebar de filtros -->
+  <div class="sidebar">
+    <div class="sb-title">Buscar</div>
+    <input type="text" class="filter-input" id="f-texto" placeholder="Titular, cédula, dirección..." oninput="aplicarFiltros()">
+
+    <div class="sb-title">Proyecto</div>
+    <select class="filter-select" id="f-proyecto" onchange="aplicarFiltros()">
+      <option value="">Todos los proyectos</option>
+    </select>
+
+    <div class="sb-title">Censista</div>
+    <select class="filter-select" id="f-censista" onchange="aplicarFiltros()">
+      <option value="">Todos los censistas</option>
+    </select>
+
+    <div class="sb-title">Desde</div>
+    <input type="date" class="filter-input" id="f-desde" onchange="aplicarFiltros()">
+
+    <div class="sb-title">Hasta</div>
+    <input type="date" class="filter-input" id="f-hasta" onchange="aplicarFiltros()">
+
+    <button class="btn btn-outline btn-sm" onclick="limpiarFiltros()" style="width:100%;justify-content:center;margin-top:10px">
+      Limpiar filtros
+    </button>
+
+    <div class="sb-title">Estadísticas</div>
+    <div class="stats-tabs">
+      <button class="stats-tab active" data-stats="proy" onclick="switchStats('proy')">Proyecto</button>
+      <button class="stats-tab" data-stats="cen" onclick="switchStats('cen')">Censista</button>
+    </div>
+    <div class="stats-box" id="stats-box">—</div>
+  </div>
+
+  <!-- Mapa -->
+  <div class="map-wrap">
+    <div id="map"></div>
+    <div class="map-counter"><b id="counter-vis">0</b> de <span id="counter-tot">0</span> visibles</div>
+    <button class="map-list-toggle" onclick="toggleLista()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      Ver lista
+    </button>
+  </div>
+
+  <!-- Panel detalle -->
+  <div class="panel-detalle" id="panel-detalle">
+    <div class="pd-tabs">
+      <button class="pd-tab active" data-pd="lista" onclick="pdTab('lista')">Listado</button>
+      <button class="pd-tab" data-pd="ficha" onclick="pdTab('ficha')">Ficha</button>
+    </div>
+    <div class="pd-body" id="pd-lista">
+      <div class="lista-empty">Cargando relevamientos…</div>
+    </div>
+    <div class="pd-body" id="pd-ficha" style="display:none">
+      <div class="lista-empty">Tocá un relevamiento del listado o del mapa para ver su ficha.</div>
+    </div>
+  </div>
+</div>
+
+<div class="loading" id="loading">
+  <div class="spinner"></div>
+  <span id="loading-msg">Cargando datos…</span>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//  CONFIGURACIÓN
+// ═══════════════════════════════════════════════════════════════════
+// ⬇⬇⬇ PEGÁ AQUÍ la misma URL del Apps Script que usa la app de campo ⬇⬇⬇
+const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbw0ZBeHT6vwjhWO-86QDfBQMg4T5gAP7-v1J0cgKXI31aJUpS94eCsgxJUZoojSZLXm/exec';
+
+// Datos embebidos (solo en la versión descargada para uso local).
+// El online los pide al backend; el local los lee de acá.
+const DATOS_EMBEBIDOS = null;
+
+// ═══════════════════════════════════════════════════════════════════
+//  ESTADO
+// ═══════════════════════════════════════════════════════════════════
+const SESSION_KEY = 'panelSesion';
+let sesion = null;
+let datos = [];          // todos los relevamientos visibles para este usuario
+let filtrados = [];      // los que pasan los filtros actuales
+let seleccionado = null; // uuid del actualmente seleccionado
+let map = null;
+let marcadores = {};     // uuid → marker de Leaflet
+let layerMarcadores = null;
+let statsMode = 'proy';
+
+// ═══════════════════════════════════════════════════════════════════
+//  VALIDACIÓN DE CÉDULA URUGUAYA (mismo algoritmo que la app de campo)
+// ═══════════════════════════════════════════════════════════════════
+function validarCedulaUY(ci) {
+  const dig = (ci || '').replace(/\D/g, '');
+  if (dig.length < 7 || dig.length > 8) return false;
+  const num = dig.padStart(8, '0');
+  const pesos = [2, 9, 8, 7, 6, 3, 4];
+  let suma = 0;
+  for (let i = 0; i < 7; i++) suma += parseInt(num[i], 10) * pesos[i];
+  const dv = (10 - (suma % 10)) % 10;
+  return dv === parseInt(num[7], 10);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  LOGIN
+// ═══════════════════════════════════════════════════════════════════
+function init() {
+  // Si hay datos embebidos (modo local), saltar login directamente
+  if (DATOS_EMBEBIDOS && DATOS_EMBEBIDOS.items) {
+    sesion = { rol: 'Local', nombre: DATOS_EMBEBIDOS.exportadoPor || 'Modo local',
+               cedula: '', exportado: DATOS_EMBEBIDOS.exportadoEn };
+    document.getElementById('login-overlay').classList.remove('show');
+    aplicarSesion();
+    datos = DATOS_EMBEBIDOS.items;
+    inicializarTodo();
+    return;
+  }
+  // Sesión guardada?
+  try { sesion = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch (e) {}
+  if (sesion && sesion.cedula) {
+    document.getElementById('login-overlay').classList.remove('show');
+    aplicarSesion();
+    cargarDatos();
+  } else {
+    setTimeout(() => document.getElementById('login-ci').focus(), 150);
+  }
+}
+
+async function hacerLogin() {
+  const input = document.getElementById('login-ci');
+  const msg = document.getElementById('login-msg');
+  const btn = document.getElementById('login-btn');
+  const ced = input.value.trim();
+  msg.textContent = '';
+  if (BACKEND_URL.indexOf('https://script.google.com/macros/s/AKfycbw0ZBeHT6vwjhWO-86QDfBQMg4T5gAP7-v1J0cgKXI31aJUpS94eCsgxJUZoojSZLXm/exec') !== -1) {
+    msg.textContent = '⚠ Falta configurar la URL del backend en Panel.html';
+    return;
+  }
+  if (!validarCedulaUY(ced)) { msg.textContent = 'La cédula no es válida.'; return; }
+  if (!navigator.onLine) { msg.textContent = 'Se requiere conexión a internet.'; return; }
+  btn.disabled = true; btn.textContent = 'Verificando…';
+  try {
+    const r = await fetch(BACKEND_URL + '?accion=login&cedula=' + ced.replace(/\D/g, ''));
+    const j = await r.json();
+    if (!j.ok) { msg.textContent = 'Cédula no habilitada.'; return; }
+    if (j.rol === 'Censista') { msg.textContent = 'Tu usuario es de campo, no tiene acceso al panel.'; return; }
+    sesion = {
+      cedula: ced.replace(/\D/g, ''),
+      nombre: j.nombre || '',
+      rol: j.rol || '',
+      proyectosAsignados: j.proyectosAsignados || []
+    };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(sesion));
+    document.getElementById('login-overlay').classList.remove('show');
+    aplicarSesion();
+    cargarDatos();
+  } catch (err) {
+    msg.textContent = 'No se pudo verificar. Revisá la conexión.';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Ingresar';
+  }
+}
+
+function aplicarSesion() {
+  document.getElementById('user-chip').style.display = 'inline-flex';
+  document.getElementById('user-nombre').textContent = (sesion.nombre || '').split(' ')[0];
+  document.getElementById('user-rol').textContent = sesion.rol;
+  // Botón de descarga: solo coordinadores online
+  if (sesion.rol === 'Coordinador' && !DATOS_EMBEBIDOS) {
+    document.getElementById('btn-descargar').style.display = 'inline-flex';
+  }
+}
+
+function cerrarSesion() {
+  if (!confirm('¿Cerrar sesión?')) return;
+  localStorage.removeItem(SESSION_KEY);
+  location.reload();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  CARGA DE DATOS
+// ═══════════════════════════════════════════════════════════════════
+async function cargarDatos() {
+  showLoading('Cargando relevamientos…');
+  try {
+    const r = await fetch(BACKEND_URL + '?accion=listar&cedula=' + sesion.cedula);
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'Error al consultar');
+    datos = j.items || [];
+    inicializarTodo();
+  } catch (err) {
+    showToast('Error al cargar datos: ' + err.message, 'error');
+  } finally {
+    hideLoading();
+  }
+}
+
+function inicializarTodo() {
+  inicializarMapa();
+  poblarFiltros();
+  aplicarFiltros();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  MAPA (Leaflet + OpenStreetMap)
+// ═══════════════════════════════════════════════════════════════════
+function inicializarMapa() {
+  if (map) return;
+  // Centrado por defecto en Canelones (~Pando)
+  map = L.map('map').setView([-34.72, -55.95], 10);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap',
+    maxZoom: 19
+  }).addTo(map);
+  layerMarcadores = L.layerGroup().addTo(map);
+}
+
+// Color determinístico por proyecto (paleta visualmente distinguible)
+const PALETA = ['#1a73e8','#1e8e3e','#d93025','#f9ab00','#9334e6','#188b8b',
+                '#e8710a','#c5221f','#0b8043','#6a1b9a','#00838f','#5f6368'];
+const _coloresProy = {};
+function colorProyecto(p) {
+  if (_coloresProy[p]) return _coloresProy[p];
+  const idx = Object.keys(_coloresProy).length % PALETA.length;
+  return _coloresProy[p] = PALETA[idx];
+}
+
+function dibujarMarcadores(items) {
+  layerMarcadores.clearLayers();
+  marcadores = {};
+  const bounds = [];
+  items.forEach(it => {
+    if (!it.lat || !it.lon || isNaN(it.lat) || isNaN(it.lon)) return;
+    const m = L.circleMarker([it.lat, it.lon], {
+      radius: 7, color:'#fff', weight:2, fillColor:colorProyecto(it.proyecto),
+      fillOpacity:.9
+    });
+    m.bindPopup(`
+      <b>${escapeHtml(it.titular || '(sin titular)')}</b>
+      <div style="color:#5f6368;font-size:12px">${escapeHtml(it.proyecto || '')}</div>
+      <div style="color:#5f6368;font-size:12px">${it.cedula ? 'CI ' + escapeHtml(it.cedula) : ''}</div>
+      <a class="popup-link" onclick="verFicha('${it.uuid}')">Ver ficha →</a>
+    `);
+    m.on('click', () => seleccionar(it.uuid));
+    m.addTo(layerMarcadores);
+    marcadores[it.uuid] = m;
+    bounds.push([it.lat, it.lon]);
+  });
+  if (bounds.length > 0) {
+    try { map.fitBounds(bounds, { padding:[40,40], maxZoom: 16 }); } catch (e) {}
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  FILTROS
+// ═══════════════════════════════════════════════════════════════════
+function poblarFiltros() {
+  const proys = [...new Set(datos.map(d => d.proyecto).filter(Boolean))].sort();
+  const cens  = [...new Set(datos.map(d => d.encuestador).filter(Boolean))].sort();
+  const selP = document.getElementById('f-proyecto');
+  const selC = document.getElementById('f-censista');
+  selP.innerHTML = '<option value="">Todos los proyectos</option>' +
+    proys.map(p => `<option>${escapeHtml(p)}</option>`).join('');
+  selC.innerHTML = '<option value="">Todos los censistas</option>' +
+    cens.map(c => `<option>${escapeHtml(c)}</option>`).join('');
+}
+
+function limpiarFiltros() {
+  document.getElementById('f-texto').value = '';
+  document.getElementById('f-proyecto').value = '';
+  document.getElementById('f-censista').value = '';
+  document.getElementById('f-desde').value = '';
+  document.getElementById('f-hasta').value = '';
+  aplicarFiltros();
+}
+
+function aplicarFiltros() {
+  const txt   = document.getElementById('f-texto').value.trim().toLowerCase();
+  const proy  = document.getElementById('f-proyecto').value;
+  const cen   = document.getElementById('f-censista').value;
+  const desde = document.getElementById('f-desde').value;
+  const hasta = document.getElementById('f-hasta').value;
+
+  filtrados = datos.filter(d => {
+    if (proy && d.proyecto !== proy) return false;
+    if (cen && d.encuestador !== cen) return false;
+    if (desde && d.fecha && d.fecha < desde) return false;
+    if (hasta && d.fecha && d.fecha > hasta) return false;
+    if (txt) {
+      const blob = [d.titular, d.cedula, d.direccion, d.numero, d.localidad,
+                    d.proyecto, d.padron, d.encuestador].filter(Boolean).join(' ').toLowerCase();
+      if (!blob.includes(txt)) return false;
+    }
+    return true;
+  });
+
+  document.getElementById('counter-vis').textContent = filtrados.length;
+  document.getElementById('counter-tot').textContent = datos.length;
+  dibujarMarcadores(filtrados);
+  renderLista();
+  renderStats();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  LISTADO
+// ═══════════════════════════════════════════════════════════════════
+function renderLista() {
+  const cont = document.getElementById('pd-lista');
+  if (!filtrados.length) {
+    cont.innerHTML = '<div class="lista-empty">No hay relevamientos que coincidan con los filtros.</div>';
+    return;
+  }
+  cont.innerHTML = filtrados.map(d => {
+    const sel = d.uuid === seleccionado ? ' sel' : '';
+    return `
+      <div class="lista-item${sel}" onclick="seleccionar('${d.uuid}')">
+        <b>${escapeHtml(d.titular || '(sin titular)')}</b>
+        <small>${d.cedula ? 'CI ' + escapeHtml(d.cedula) + ' · ' : ''}${escapeHtml(d.localidad || '')}</small>
+        <div class="lista-meta">
+          ${d.proyecto ? `<span class="tag proy" style="background:${colorProyecto(d.proyecto)}20;color:${colorProyecto(d.proyecto)}">${escapeHtml(d.proyecto)}</span>` : ''}
+          ${d.fecha ? `<span class="tag">${d.fecha}</span>` : ''}
+          ${d.encuestador ? `<span class="tag">${escapeHtml((d.encuestador+'').split(' ')[0])}</span>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  SELECCIÓN Y FICHA
+// ═══════════════════════════════════════════════════════════════════
+function seleccionar(uuid) {
+  seleccionado = uuid;
+  renderLista();
+  const m = marcadores[uuid];
+  if (m) { map.setView(m.getLatLng(), Math.max(map.getZoom(), 15)); m.openPopup(); }
+  verFicha(uuid);
+}
+
+async function verFicha(uuid) {
+  seleccionado = uuid;
+  pdTab('ficha');
+  const it = datos.find(d => d.uuid === uuid);
+  const cont = document.getElementById('pd-ficha');
+  if (!it) { cont.innerHTML = '<div class="lista-empty">No se encontró el relevamiento.</div>'; return; }
+
+  // Pintar ficha sin esperar al hogar
+  cont.innerHTML = fichaHTML(it, null);
+
+  // Cargar hogar si no es modo local
+  if (DATOS_EMBEBIDOS) {
+    const h = (DATOS_EMBEBIDOS.hogar || []).filter(x => x.uuid === uuid);
+    cont.innerHTML = fichaHTML(it, h);
+  } else {
+    try {
+      const r = await fetch(BACKEND_URL + '?accion=hogar&uuid=' + encodeURIComponent(uuid));
+      const j = await r.json();
+      if (j.ok) cont.innerHTML = fichaHTML(it, j.items);
+    } catch (e) { /* deja la ficha sin hogar */ }
+  }
+}
+
+function fichaHTML(it, hogar) {
+  const fotos = (urls) => urls.map(u => `<a href="${u}" target="_blank"><img src="${conv(u)}" alt=""></a>`).join('');
+  return `
+    <div class="ficha">
+      <div class="ficha-titulo">${escapeHtml(it.titular || '(sin titular)')}</div>
+      <div class="ficha-subt">${it.cedula ? 'CI ' + escapeHtml(it.cedula) : '(sin cédula)'}</div>
+
+      <div class="ficha-section">
+        <h4>Proyecto</h4>
+        <div class="ficha-row"><span>Nombre</span><span>${escapeHtml(it.proyecto || '—')}</span></div>
+        <div class="ficha-row"><span>Padrón</span><span>${escapeHtml(it.padron || '—')}</span></div>
+        <div class="ficha-row"><span>Encuestador/a</span><span>${escapeHtml(it.encuestador || '—')}</span></div>
+        <div class="ficha-row"><span>Fecha</span><span>${escapeHtml(it.fecha || '—')}</span></div>
+      </div>
+
+      <div class="ficha-section">
+        <h4>Dirección</h4>
+        <div class="ficha-row"><span>Calle</span><span>${escapeHtml(it.direccion || '—')} ${escapeHtml(it.numero || '')}</span></div>
+        <div class="ficha-row"><span>Localidad</span><span>${escapeHtml(it.localidad || '—')}</span></div>
+        <div class="ficha-row"><span>Coordenadas</span><span>${it.lat ? `${it.lat.toFixed(5)}, ${it.lon.toFixed(5)} (±${it.acc||'?'}m)` : '—'}</span></div>
+        ${it.lat ? `<div class="ficha-row"><span></span><span><a href="https://maps.google.com/?q=${it.lat},${it.lon}" target="_blank" style="color:var(--blue)">Ver en Google Maps →</a></span></div>` : ''}
+      </div>
+
+      ${hogar !== null ? `
+      <div class="ficha-section">
+        <h4>Hogar (${hogar.length} ${hogar.length === 1 ? 'integrante' : 'integrantes'})</h4>
+        ${hogar.length === 0 ? '<div style="font-size:13px;color:var(--gray-400)">Sin integrantes registrados.</div>' :
+          hogar.map(m => `
+            <div class="miembro-row">
+              <b>${escapeHtml((m.nombres||'') + ' ' + (m.apellidos||''))}</b>
+              <small>${escapeHtml(m.parentesco||'')}${m.cedula ? ' · CI ' + escapeHtml(m.cedula) : ''}${m.edad ? ' · ' + m.edad + ' años' : ''}</small>
+            </div>`).join('')}
+      </div>` : `
+      <div class="ficha-section">
+        <h4>Hogar</h4>
+        <div style="font-size:13px;color:var(--gray-400)">Cargando integrantes…</div>
+      </div>`}
+
+      ${(it.fotosFach && it.fotosFach.length) ? `
+      <div class="ficha-section">
+        <h4>Fotos de fachada</h4>
+        <div class="ficha-fotos">${fotos(it.fotosFach)}</div>
+      </div>` : ''}
+
+      ${(it.fotosCed && it.fotosCed.length) ? `
+      <div class="ficha-section">
+        <h4>Fotos de cédulas</h4>
+        <div class="ficha-fotos">${fotos(it.fotosCed)}</div>
+      </div>` : ''}
+
+      ${it.firma ? `
+      <div class="ficha-section">
+        <h4>Firma</h4>
+        <div class="ficha-firma"><a href="${it.firma}" target="_blank"><img src="${conv(it.firma)}" alt="firma"></a></div>
+      </div>` : ''}
+
+      ${it.carpeta ? `<a class="btn btn-outline btn-sm" href="${it.carpeta}" target="_blank" style="margin-top:6px">Abrir carpeta de Drive →</a>` : ''}
+    </div>`;
+}
+
+// Drive: convertir link compartido en thumbnail visible
+function conv(url) {
+  const m = String(url).match(/[-\w]{25,}/);
+  return m ? 'https://drive.google.com/thumbnail?id=' + m[0] + '&sz=w400' : url;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  ESTADÍSTICAS
+// ═══════════════════════════════════════════════════════════════════
+function switchStats(mode) {
+  statsMode = mode;
+  document.querySelectorAll('.stats-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.stats === mode);
+  });
+  renderStats();
+}
+
+function renderStats() {
+  const key = statsMode === 'proy' ? 'proyecto' : 'encuestador';
+  const cuenta = {};
+  filtrados.forEach(d => {
+    const k = d[key] || '(sin asignar)';
+    cuenta[k] = (cuenta[k] || 0) + 1;
+  });
+  const ordenado = Object.entries(cuenta).sort((a,b) => b[1] - a[1]);
+  const cont = document.getElementById('stats-box');
+  if (!ordenado.length) { cont.textContent = 'Sin datos.'; return; }
+  cont.innerHTML = `<div class="stats-row"><span><b>Total visible</b></span><span><b>${filtrados.length}</b></span></div>` +
+    ordenado.map(([k,v]) => {
+      const color = statsMode === 'proy' ? colorProyecto(k) : 'var(--gray-600)';
+      const display = (k+'').length > 24 ? (k+'').slice(0,22) + '…' : k;
+      return `<div class="stats-row"><span style="color:${color}">${escapeHtml(display)}</span><span>${v}</span></div>`;
+    }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  DESCARGA PARA USO LOCAL
+// ═══════════════════════════════════════════════════════════════════
+async function descargarLocal() {
+  if (sesion.rol !== 'Coordinador') return;
+  showLoading('Preparando descarga…');
+  try {
+    // Traer hogar completo de todos los relevamientos visibles
+    const hogarPorUuid = [];
+    for (const it of datos) {
+      try {
+        const r = await fetch(BACKEND_URL + '?accion=hogar&uuid=' + encodeURIComponent(it.uuid));
+        const j = await r.json();
+        if (j.ok && j.items) j.items.forEach(m => hogarPorUuid.push({ uuid: it.uuid, ...m }));
+      } catch (e) { /* sigue */ }
+    }
+    const blob = {
+      exportadoEn: new Date().toISOString(),
+      exportadoPor: sesion.nombre,
+      items: datos,
+      hogar: hogarPorUuid
+    };
+    // Inyectar en una copia del HTML actual
+    const html = document.documentElement.outerHTML
+      .replace(/const DATOS_EMBEBIDOS = null;/,
+               'const DATOS_EMBEBIDOS = ' + JSON.stringify(blob).replace(/<\/script>/g, '<\\/script>') + ';');
+    const file = new Blob(['<!DOCTYPE html>\n' + html], { type:'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(file);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'PadronEscrituras_Panel_' + new Date().toISOString().slice(0,10) + '.html';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Archivo descargado. Compartilo en la red local.', '', 4000);
+  } catch (err) {
+    showToast('Error al preparar la descarga: ' + err.message, 'error');
+  } finally {
+    hideLoading();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  UI
+// ═══════════════════════════════════════════════════════════════════
+function pdTab(name) {
+  document.querySelectorAll('.pd-tab').forEach(t => t.classList.toggle('active', t.dataset.pd === name));
+  document.getElementById('pd-lista').style.display = name === 'lista' ? '' : 'none';
+  document.getElementById('pd-ficha').style.display = name === 'ficha' ? '' : 'none';
+}
+
+function toggleLista() {
+  const p = document.getElementById('panel-detalle');
+  p.style.display = p.style.display === 'flex' ? 'none' : 'flex';
+}
+
+function showLoading(msg) {
+  document.getElementById('loading-msg').textContent = msg || 'Cargando…';
+  document.getElementById('loading').classList.add('show');
+}
+function hideLoading() { document.getElementById('loading').classList.remove('show'); }
+function showToast(msg, type='', dur=3000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show ' + type;
+  setTimeout(() => { t.className = 'toast'; }, dur);
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// Arranque
+init();
+</script>
+</body>
+</html>
