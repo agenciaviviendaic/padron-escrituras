@@ -291,7 +291,7 @@
 // ═══════════════════════════════════════════════════════════════════
 //  CONFIGURACIÓN
 // ═══════════════════════════════════════════════════════════════════
-// ⬇⬇⬇ PEGÁ AQUÍ la misma URL del Apps Script que usa la app de campo ⬇⬇⬇
+// 
 const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbw0ZBeHT6vwjhWO-86QDfBQMg4T5gAP7-v1J0cgKXI31aJUpS94eCsgxJUZoojSZLXm/exec';
 
 // Datos embebidos (solo en la versión descargada para uso local).
@@ -389,9 +389,11 @@ function aplicarSesion() {
   document.getElementById('user-chip').style.display = 'inline-flex';
   document.getElementById('user-nombre').textContent = (sesion.nombre || '').split(' ')[0];
   document.getElementById('user-rol').textContent = sesion.rol;
-  // Botón de descarga: solo coordinadores online
+  // Botón de descarga: solo coordinadores online (no en modo local)
   if (sesion.rol === 'Coordinador' && !DATOS_EMBEBIDOS) {
     document.getElementById('btn-descargar').style.display = 'inline-flex';
+  } else {
+    document.getElementById('btn-descargar').style.display = 'none';
   }
 }
 
@@ -682,12 +684,20 @@ function renderStats() {
 //  DESCARGA PARA USO LOCAL
 // ═══════════════════════════════════════════════════════════════════
 async function descargarLocal() {
+  if (DATOS_EMBEBIDOS) {
+    showToast('Ya estás en la versión local. Volvé al panel online para descargar una nueva.', '', 4500);
+    return;
+  }
   if (sesion.rol !== 'Coordinador') return;
   showLoading('Preparando descarga…');
   try {
     // Traer hogar completo de todos los relevamientos visibles
     const hogarPorUuid = [];
+    let i = 0;
     for (const it of datos) {
+      i++;
+      document.getElementById('loading-msg').textContent =
+        `Preparando descarga… (${i}/${datos.length})`;
       try {
         const r = await fetch(BACKEND_URL + '?accion=hogar&uuid=' + encodeURIComponent(it.uuid));
         const j = await r.json();
@@ -755,3 +765,4 @@ init();
 </script>
 </body>
 </html>
+
